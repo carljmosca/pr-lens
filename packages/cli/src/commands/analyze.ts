@@ -1,18 +1,19 @@
-import { LENSES, PROVIDERS, type GraphDocInput, type Lens, type Provider } from "@coldtea/pr-lens-schema";
-import { dirname } from "node:path";
 import { z } from "zod";
-import { parseOptions, readBoolean, readInt, readList, readString } from "../args.js";
-import { discoverConfig, loadConfig, type LoadedConfig } from "../config-file.js";
-import { PrLensCliError, usageError } from "../errors.js";
-import { extractGraph } from "../extract.js";
-import { collectDiff, mergeBase, parseRepoSlug, pullRequestUrl, remoteSlug, repositoryRoot, resolveCommit } from "../git.js";
+import { dirname } from "node:path";
+import { LENSES, PROVIDERS, type GraphDocInput, type Lens, type Provider } from "@coldtea/pr-lens-schema";
 import { writeJsonFile } from "../io.js";
-import { buildExtractionPrompt, SYSTEM_PROMPT } from "../prompt.js";
-import { completeJson, isProviderId, PROVIDER_IDS, resolveProvider } from "../providers/index.js";
-import { GRAPH_DOCUMENT_JSON_SCHEMA } from "../skill-content.generated.js";
+import { extractGraph } from "../extract.js";
 import type { Terminal } from "../terminal.js";
+import { ResponseFormat } from "../providers/openai.js";
+import { PrLensCliError, usageError } from "../errors.js";
 import { CLI_VERSION, GENERATOR_NAME } from "../version.js";
 import { prepareWorkspace, WORKSPACE_DIR } from "../workspace.js";
+import { buildExtractionPrompt, SYSTEM_PROMPT } from "../prompt.js";
+import { GRAPH_DOCUMENT_JSON_SCHEMA } from "../skill-content.generated.js";
+import { discoverConfig, loadConfig, type LoadedConfig } from "../config-file.js";
+import { parseOptions, readBoolean, readInt, readList, readString } from "../args.js";
+import { completeJson, isProviderId, PROVIDER_IDS, resolveProvider } from "../providers/index.js";
+import { collectDiff, mergeBase, parseRepoSlug, pullRequestUrl, remoteSlug, repositoryRoot, resolveCommit } from "../git.js";
 
 const DEFAULT_OUT = `${WORKSPACE_DIR}/graph.json`;
 const DEFAULT_MAX_OUTPUT_TOKENS = 32_768;
@@ -45,6 +46,9 @@ environment, and the diff goes straight to the provider you name.
   --temperature <n|default> sampling temperature (default ${DEFAULT_TEMPERATURE}); "default" sends none,
                             for models that accept only their own, like OpenAI's
                             reasoning models
+  --response-format <json_object|none>
+                            JSON mode for /chat/completions (default json_object);
+                            "none" omits response_format
   --dry-run                 report what would be sent, and send nothing
   -o, --out <file>          where to write the document (default ${DEFAULT_OUT})`;
 
@@ -89,6 +93,14 @@ const readProviderId = (values: Record<string, unknown>) => {
   return id;
 };
 
+const readResponseFormat = (values: Record<string, unknown>) => {
+  const text = readString(values["response-format"], "response-format") ?? "json_object";
+  const parsed = ResponseFormat.safeParse(text);
+  if (!parsed.success)
+    throw usageError(`--response-format takes json_object or none, got ${JSON.stringify(text)}`);
+  return parsed.data;
+};
+
 export const analyzeCommand = async (
   args: readonly string[],
   terminal: Terminal,
@@ -112,6 +124,7 @@ export const analyzeCommand = async (
     "max-diff-bytes": { type: "string" },
     "max-output-tokens": { type: "string" },
     temperature: { type: "string" },
+    "response-format": { type: "string" },
     "dry-run": { type: "boolean" },
     out: { type: "string", short: "o" },
   });
@@ -125,6 +138,7 @@ export const analyzeCommand = async (
   const head = readString(values.head, "head") ?? "HEAD";
   const maxDiffBytes = readInt(values["max-diff-bytes"], "max-diff-bytes", DEFAULT_MAX_DIFF_BYTES);
   const temperature = readTemperature(values);
+  const responseFormat = readResponseFormat(values);
 
   const slugOption = readString(values["repo-slug"], "repo-slug");
   const detected = slugOption === undefined
@@ -238,7 +252,7 @@ export const analyzeCommand = async (
         if (attempt > 1) terminal.err(`the document did not validate — asking for a correction`);
       },
     },
-    (request) => completeJson(provider, request),
+    (request) => completeJson(provider, request, responseFormat),
   );
 
   const outPath = readString(values.out, "out") ?? DEFAULT_OUT;

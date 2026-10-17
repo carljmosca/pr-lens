@@ -55,14 +55,18 @@ test("only the providers the CLI implements are accepted", () => {
   expect(isProviderId("anthropic")).toBe(false);
 });
 
-const sentBody = async (provider: Parameters<typeof completeJson>[0], temperature?: number): Promise<unknown> => {
+const sentBody = async (
+  provider: Parameters<typeof completeJson>[0],
+  temperature?: number,
+  responseFormat?: Parameters<typeof completeJson>[2],
+): Promise<unknown> => {
   const answer =
     provider.id === "gemini"
       ? { candidates: [{ content: { parts: [{ text: "{}" }] }, finishReason: "STOP" }] }
       : { choices: [{ message: { content: "{}" }, finish_reason: "stop" }] };
   const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(answer)));
   vi.stubGlobal("fetch", fetchMock);
-  await completeJson(provider, { system: "s", turns: [{ role: "user", text: "t" }], maxOutputTokens: 10, temperature });
+  await completeJson(provider, { system: "s", turns: [{ role: "user", text: "t" }], maxOutputTokens: 10, temperature }, responseFormat);
   return JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
 };
 
@@ -84,4 +88,15 @@ test("no temperature sends none, for models that accept only their own default",
   expect(await sentBody(openai)).not.toHaveProperty("temperature");
   expect(await sentBody(compatible)).not.toHaveProperty("temperature");
   expect(await sentBody(gemini)).not.toHaveProperty("generationConfig.temperature");
+});
+
+
+test.each([openai, compatible])("$id keeps JSON mode unless explicitly disabled", async (provider) => {
+  expect(await sentBody(provider)).toHaveProperty("response_format", { type: "json_object" });
+  expect(await sentBody(provider, undefined, "json_object")).toHaveProperty("response_format", { type: "json_object" });
+  expect(await sentBody(provider, undefined, "none")).not.toHaveProperty("response_format");
+});
+
+test("Gemini keeps its native JSON mode", async () => {
+  expect(await sentBody(gemini, undefined, "none")).toHaveProperty("generationConfig.responseMimeType", "application/json");
 });
