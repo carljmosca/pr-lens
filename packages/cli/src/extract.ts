@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { PrLensCliError } from "./errors.js";
 import type { JsonCompletion, Turn } from "./providers/index.js";
+import { normalizePayloadSamples } from "./normalize-payloads.js";
 import { buildJsonRepairPrompt, buildRepairPrompt } from "./prompt.js";
 
 /** One repair round. A model that cannot fix a named path in one go does not fix it in three. */
@@ -122,7 +123,7 @@ export const extractGraph = async (
       continue;
     }
 
-    const parsed = safeParseGraphDoc(applyKnownFields(read.value, options.known));
+    const parsed = safeParseGraphDoc(applyKnownFields(normalizePayloadSamples(read.value), options.known));
     if (parsed.ok) return { document: parsed.value, attempts: attempt };
 
     if (last)
