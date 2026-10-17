@@ -46,8 +46,21 @@ test.each(["request", "response"])("decodes sample and before on the %s side", a
   expect(document.flows[0]?.messages[0]?.payload).toMatchObject({
     [side]: { sample: { id: 1 }, before: [{ id: 0 }] },
   });
-  expect(body.flows[0]?.messages[0]?.payload).toEqual({
-    [side]: { type: "Result", sample: '{"id":1}', before: '[{"id":0}]' },
+});
+
+test("normalizes samples without mutating its input", () => {
+  const side = { type: "Result", sample: '{"id":1}', before: '[{"id":0}]' };
+  const body = bodyWith({ request: { ...side }, response: { ...side } });
+  const original = structuredClone(body);
+
+  const normalized = normalizePayloadSamples(body);
+
+  expect(body).toEqual(original);
+  expect(normalized).toMatchObject({
+    flows: [{ messages: [{ payload: {
+      request: { sample: { id: 1 }, before: [{ id: 0 }] },
+      response: { sample: { id: 1 }, before: [{ id: 0 }] },
+    } }] }],
   });
 });
 
