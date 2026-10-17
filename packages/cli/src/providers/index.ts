@@ -1,7 +1,7 @@
 import { assertNever } from "@coldtea/pr-lens-schema";
 import { PrLensCliError } from "../errors.js";
 import { geminiCompleteJson } from "./gemini.js";
-import { openAiCompleteJson } from "./openai.js";
+import { openAiCompleteJson, type ResponseFormat } from "./openai.js";
 
 /**
  * Three shapes rather than a list of vendors: Gemini's own API, OpenAI's own
@@ -112,14 +112,18 @@ export const resolveProvider = (
   return { id: options.id, model, apiKey, baseUrl: baseUrl.replace(/\/+$/, "") };
 };
 
-export const completeJson = (provider: Provider, request: JsonCompletion): Promise<string> => {
+export const completeJson = (
+  provider: Provider,
+  request: JsonCompletion,
+  responseFormat: ResponseFormat = "json_object",
+): Promise<string> => {
   switch (provider.id) {
     case "gemini":
       return geminiCompleteJson(provider, request);
     case "openai":
-      return openAiCompleteJson(provider, request, "max_completion_tokens");
+      return openAiCompleteJson(provider, request, "max_completion_tokens", responseFormat);
     case "openai-compatible":
-      return openAiCompleteJson(provider, request, "max_tokens");
+      return openAiCompleteJson(provider, request, "max_tokens", responseFormat);
     default:
       return assertNever(provider.id, "Unhandled provider");
   }

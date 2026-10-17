@@ -332,3 +332,8 @@ test("render and comment agree on where the SVGs are, without either deriving th
     expect(body).toContain(`https://raw.githubusercontent.com/o/r/pr-lens/42/${asset.path}`);
   }
 });
+
+test("an unknown response format is a misuse", async () => {
+  expect(await invoke("analyze", "--base", "main", "--response-format", "xml")).toBe(2);
+  expect(err.join("\n")).toContain('--response-format takes json_object or none, got "xml"');
+});

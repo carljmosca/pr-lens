@@ -55,6 +55,8 @@ Finding that comment takes more than the marker: anyone can post the marker them
 | `provider` | `gemini` | or `openai`, or `openai-compatible` for anything else speaking `/chat/completions` |
 | `model` | none | required for `openai` and `openai-compatible`: the endpoint decides which names exist |
 | `base-url` | none | required for `openai-compatible`: the endpoint it is compatible with |
+| `temperature` | CLI default (`0`) | non-negative number, or `default` to omit temperature from the request |
+| `response-format` | `json_object` | JSON mode for `/chat/completions`; set `none` to omit `response_format` |
 | `lens` | both | comma-separated: `architecture`, `data-flow` |
 | `branding` | `true` | the "Rendered by PR Lens" footer |
 | `comment` | `true` | set `false` to render and publish without commenting |
@@ -65,6 +67,22 @@ Finding that comment takes more than the marker: anyone can post the marker them
 | `github-token` | `${{ github.token }}` | used to publish and to comment |
 
 Outputs: `graph`, the path of the document that was produced, and `assets-url`, where the SVGs were published.
+
+## Claude through the compatible endpoint
+
+Set both options to use the model's own temperature and leave out JSON mode:
+
+```yaml
+with:
+  api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+  provider: openai-compatible
+  base-url: https://api.anthropic.com/v1
+  model: claude-opus-5-5
+  temperature: default
+  response-format: none
+```
+
+The CLI still validates the answer and asks for one correction if needed. A pinned older CLI must support `--response-format` before you can set this input.
 
 ## Corrections
 

@@ -21,6 +21,12 @@ inputs:
   base-url:
     description: Provider endpoint, for a compatible or self-hosted server.
     default: ""
+  temperature:
+    description: Sampling temperature. Set default to let the model choose, or pass a non-negative number. Unset uses the CLI default.
+    default: ""
+  response-format:
+    description: JSON mode for /chat/completions. Set none to omit response_format. Unset uses json_object.
+    default: ""
   lens:
     description: Comma-separated lenses to render. Defaults to both.
     default: ""
@@ -35,7 +41,7 @@ inputs:
     default: pr-lens
   cli-version:
     description: Version of @coldtea/pr-lens-cli to run.
-    default: 0.13.0
+    default: 0.13.1
   comment-author:
     description: >-
       Login that owns the PR Lens comment. Only a comment posted by this
@@ -102,6 +108,8 @@ runs:
           ${MODEL:+--model "${MODEL}"} \
           ${BASE_URL:+--base-url "${BASE_URL}"} \
           ${LENS:+--lens "${LENS}"} \
+          ${TEMPERATURE:+--temperature "${TEMPERATURE}"} \
+          ${RESPONSE_FORMAT:+--response-format "${RESPONSE_FORMAT}"} \
           --out "${RUNNER_TEMP}/pr-lens/graph.json"
         echo "graph=${RUNNER_TEMP}/pr-lens/graph.json" >> "${GITHUB_OUTPUT}"
       env:
@@ -113,6 +121,8 @@ runs:
         MODEL: ${{ inputs.model }}
         BASE_URL: ${{ inputs.base-url }}
         LENS: ${{ inputs.lens }}
+        TEMPERATURE: ${{ inputs.temperature }}
+        RESPONSE_FORMAT: ${{ inputs.response-format }}
         PR_LENS_API_KEY: ${{ inputs.api-key }}
         PR_LENS_TOKEN: ${{ inputs.token }}
 

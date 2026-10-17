@@ -27,7 +27,11 @@ Three request shapes are implemented rather than a list of vendors:
 
 DeepSeek, Anthropic's compatibility endpoint, OpenRouter, Ollama and llama.cpp are all reached by pointing `--base-url` at them, and a new vendor needs no release here. OpenAI is listed separately from the servers that copied it because the two have drifted: it renamed the output limit to `max_completion_tokens` and its newer models reject `max_tokens`, which is the only spelling the others know. There is no field both accept, so you say which endpoint you are talking to rather than the CLI guessing from a hostname.
 
-Every provider gets temperature 0, so the same diff tends to draw the same diagram. OpenAI's reasoning models accept only their own default and reject a request that sets any other value: pass `--temperature default` to send none, or `--temperature <n>` for another value.
+By default, every provider gets temperature 0, so the same diff tends to draw the same diagram. OpenAI's reasoning models accept only their own default and reject a request that sets any other value: pass `--temperature default` to send none, or `--temperature <n>` for another value.
+
+For `/chat/completions`, the CLI sends `response_format: { type: "json_object" }` by default. Pass `--response-format none` if your endpoint rejects JSON mode, or `--response-format json_object` to request it explicitly. This option applies only to the `openai` and `openai-compatible` providers. The CLI validates the graph and can request one correction in either mode.
+
+For Claude through `--provider openai-compatible --base-url https://api.anthropic.com/v1`, pass `--temperature default --response-format none`.
 
 ```bash
 pr-lens analyze --base origin/main \

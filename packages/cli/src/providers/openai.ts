@@ -1,6 +1,21 @@
 import { z } from "zod";
-import { cutOff, postJson, unreadableResponse } from "./http.js";
+import { assertNever } from "@coldtea/pr-lens-schema";
 import type { JsonCompletion, Provider } from "./index.js";
+import { cutOff, postJson, unreadableResponse } from "./http.js";
+
+export const ResponseFormat = z.enum(["json_object", "none"]);
+export type ResponseFormat = z.infer<typeof ResponseFormat>;
+
+const responseFormatFields = (format: ResponseFormat) => {
+  switch (format) {
+    case "none":
+      return {};
+    case "json_object":
+      return { response_format: { type: format } };
+    default:
+      return assertNever(format, "Unhandled response format");
+  }
+};
 
 const Response = z.object({
   choices: z
@@ -32,6 +47,7 @@ export const openAiCompleteJson = async (
   provider: Provider,
   request: JsonCompletion,
   tokenLimitField: TokenLimitField,
+  responseFormat: ResponseFormat,
 ): Promise<string> => {
   const body = await postJson(
     `${provider.baseUrl}/chat/completions`,
@@ -40,7 +56,7 @@ export const openAiCompleteJson = async (
       model: provider.model,
       ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
       [tokenLimitField]: request.maxOutputTokens,
-      response_format: { type: "json_object" },
+      ...responseFormatFields(responseFormat),
       messages: [
         { role: "system", content: request.system },
         ...request.turns.map((turn) => ({
