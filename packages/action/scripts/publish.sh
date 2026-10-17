@@ -58,4 +58,5 @@ if [ -z "${PUSHED}" ]; then
   exit 1
 fi
 
-echo "assets-url=https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${DATA_BRANCH}/${DIRECTORY}" >> "${GITHUB_OUTPUT}"
+# Use the viewer's GitHub session for private repository images.
+echo "assets-url=https://github.com/${GITHUB_REPOSITORY}/raw/${DATA_BRANCH}/${DIRECTORY}" >> "${GITHUB_OUTPUT}"
