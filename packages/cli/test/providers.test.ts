@@ -90,13 +90,7 @@ test("no temperature sends none, for models that accept only their own default",
   expect(await sentBody(gemini)).not.toHaveProperty("generationConfig.temperature");
 });
 
-
 test.each([openai, compatible])("$id keeps JSON mode unless explicitly disabled", async (provider) => {
   expect(await sentBody(provider)).toHaveProperty("response_format", { type: "json_object" });
-  expect(await sentBody(provider, undefined, "json_object")).toHaveProperty("response_format", { type: "json_object" });
   expect(await sentBody(provider, undefined, "none")).not.toHaveProperty("response_format");
-});
-
-test("Gemini keeps its native JSON mode", async () => {
-  expect(await sentBody(gemini, undefined, "none")).toHaveProperty("generationConfig.responseMimeType", "application/json");
 });

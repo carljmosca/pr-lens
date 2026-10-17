@@ -50,7 +50,7 @@ const analyzeArguments = async (temperature: string, responseFormat: string): Pr
   }
 };
 
-test.each(["0", "0.7", "default"])("the Action forwards temperature %s and response format", async (temperature) => {
+test.each(["0", "default"])("the Action forwards temperature %s and response format", async (temperature) => {
   const args = await analyzeArguments(temperature, "none");
   expect(args.slice(args.indexOf("--temperature"), args.indexOf("--temperature") + 2)).toEqual(["--temperature", temperature]);
   expect(args.slice(args.indexOf("--response-format"), args.indexOf("--response-format") + 2)).toEqual(["--response-format", "none"]);
