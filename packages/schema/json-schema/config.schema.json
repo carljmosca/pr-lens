@@ -173,6 +173,11 @@
             "auto",
             "on-demand"
           ]
+        },
+        "description": {
+          "default": true,
+          "description": "Put the walkthrough and data flow buttons at the end of the pull request description once it is drawn. `false` leaves descriptions alone.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false

@@ -96,6 +96,12 @@ export const Config = z
           .describe(
             "When the hosted App draws: every push, or only after someone comments `@pr-lens draw` on the pull request.",
           ),
+        description: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Put the walkthrough and data flow buttons at the end of the pull request description once it is drawn. `false` leaves descriptions alone.",
+          ),
       })
       .prefault({}),
   })
