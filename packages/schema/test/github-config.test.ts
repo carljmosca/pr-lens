@@ -76,3 +76,23 @@ describe("GitHub draw mode", () => {
     expect(validate(input)).toBe(false);
   });
 });
+
+describe("GitHub description buttons", () => {
+  it.each([{}, { github: {} }, { github: { draw: "on-demand" } }])("puts the buttons in unless told otherwise: %j", (fields) => {
+    const input = { schemaVersion: SCHEMA_VERSION, ...fields };
+    expect(Config.parse(input).github.description).toBe(true);
+    expect(validate(input)).toBe(true);
+  });
+
+  it("accepts the switch off in Zod and the published JSON Schema", () => {
+    const input = { schemaVersion: SCHEMA_VERSION, github: { description: false, comment: { collapsed: true } } };
+    expect(Config.parse(input).github.description).toBe(false);
+    expect(validate(input)).toBe(true);
+  });
+
+  it.each(["false", 0, null, "off"])("rejects a non-boolean switch: %j", (description) => {
+    const input = { schemaVersion: SCHEMA_VERSION, github: { description } };
+    expect(Config.safeParse(input).success).toBe(false);
+    expect(validate(input)).toBe(false);
+  });
+});

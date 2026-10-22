@@ -34,6 +34,7 @@
       "collapsed": false,
       "notice": true
     },
-    "draw": "auto"
+    "draw": "auto",
+    "description": true
   }
 }

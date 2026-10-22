@@ -154,6 +154,7 @@ lenses: [architecture, data-flow]
 branding: true
 github:
   draw: auto
+  description: true
   comment:
     collapsed: false
     notice: true
@@ -180,6 +181,7 @@ The hosted App reads `github` settings from the PR's head commit. Other options 
 | `github.comment.collapsed` | `false` | Start diagrams and details closed. Drawing still runs automatically. |
 | `github.draw` | `auto` | `on-demand` leaves a pull request undrawn, with a short notice, until someone comments `@pr-lens draw`. |
 | `github.comment.notice` | `true` | `false` drops that notice, so an on-demand repository hears nothing until someone asks. |
+| `github.description` | `true` | Once a pull request is drawn, the walkthrough and data flow buttons go at the end of its description. `false` leaves descriptions alone. |
 
 ## JSON Schema
 
