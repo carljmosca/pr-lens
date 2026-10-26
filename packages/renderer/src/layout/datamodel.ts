@@ -11,6 +11,7 @@ import {
   LANE_TOP,
   OVER_CLEARANCE,
   OVER_PITCH,
+  PILL_CARD_CLEARANCE,
   PORT_FAN_MAX,
   ROW_GAP,
   TABLE_ROW_HEIGHT,
@@ -67,25 +68,56 @@ const laneOf = (tables: readonly Table[], stores: readonly Store[]): Map<string,
   return new Map(tables.map((table) => [table.id, index.get(table.store) ?? 0]));
 };
 
-/** How many relations cross above the lanes: the band the lanes have to leave for them. */
-const skipCount = (graph: ScopedGraph, lanes: ReadonlyMap<string, number>): number =>
-  graph.relations.filter(
-    ({ from, to }) => Math.abs((lanes.get(from.table) ?? 0) - (lanes.get(to.table) ?? 0)) > 1,
-  ).length;
+const GUTTER = LANE_PADDING_X * 2 + LANE_GAP;
+
+/**
+ * What the routes ask of the gaps before anything is placed: how many cross
+ * above the lanes, and how many legs each corridor carries. Both follow from
+ * lane indices alone, so the lanes can be placed around them.
+ */
+const traffic = (
+  graph: ScopedGraph,
+  lanes: ReadonlyMap<string, number>,
+  last: number,
+): { skips: number; legs: Map<number, number> } => {
+  const legs = new Map<number, number>();
+  let skips = 0;
+  for (const { from, to, label } of graph.relations) {
+    const planned = planLanes(lanes.get(from.table) ?? 0, lanes.get(to.table) ?? 0, last, label);
+    if (planned.over) skips += 1;
+    for (const corridor of planned.corridors) legs.set(corridor, (legs.get(corridor) ?? 0) + 1);
+  }
+  return { skips, legs };
+};
+
+/** Room a corridor needs beyond the gutter to hold its legs at the floor pitch. */
+const corridorExtra = (legs: number): number =>
+  Math.max(0, TRACK_CLEARANCE * 2 + TRACK_PITCH_MIN * (legs - 1) - GUTTER);
 
 export const layoutDataModel = (graph: ScopedGraph): DataModelLayout => {
   const stores = orderStores(graph.stores);
   const lanes = laneOf(graph.tables, stores);
-  const skips = skipCount(graph, lanes);
+  const { skips, legs } = traffic(graph, lanes, stores.length - 1);
   const overBand = skips === 0 ? 0 : skips * OVER_PITCH + OVER_CLEARANCE;
   const laneTop = LANE_TOP + overBand;
   const contentTop = CONTENT_TOP + overBand;
   const laneBoxWidth = LANE_CONTENT_WIDTH + LANE_PADDING_X * 2;
+  const extra = (corridor: number): number => corridorExtra(legs.get(corridor) ?? 0);
+
+  // Lane `i` starts after corridor `i`, and a corridor fuller than the gutter holds pushes it along.
+  const laneLefts: number[] = [];
+  let laneX = DIAGRAM_MARGIN;
+  stores.forEach((_, laneIndex) => {
+    laneX += extra(laneIndex);
+    laneLefts.push(laneX);
+    laneX += laneBoxWidth + LANE_GAP;
+  });
+  const contentRight = laneX - LANE_GAP + extra(stores.length);
 
   const tables: PlacedTable[] = [];
   let laneBottom = contentTop;
   stores.forEach((store, laneIndex) => {
-    const x = DIAGRAM_MARGIN + laneIndex * (laneBoxWidth + LANE_GAP) + LANE_PADDING_X;
+    const x = (laneLefts[laneIndex] ?? DIAGRAM_MARGIN) + LANE_PADDING_X;
     let y = contentTop;
     for (const table of graph.tables) {
       if (table.store !== store.id) continue;
@@ -111,23 +143,22 @@ export const layoutDataModel = (graph: ScopedGraph): DataModelLayout => {
   const placedStores = stores.map((store, index) => ({
     store,
     box: {
-      x: DIAGRAM_MARGIN + index * (laneBoxWidth + LANE_GAP),
+      x: laneLefts[index] ?? DIAGRAM_MARGIN,
       y: laneTop,
       width: laneBoxWidth,
       height: laneBottom - laneTop,
     },
   }));
 
-  const gutter = LANE_PADDING_X * 2 + LANE_GAP;
-  const corridors = placedStores.map(({ box }) => ({
-    left: box.x + LANE_PADDING_X - gutter,
+  const corridors = placedStores.map(({ box }, index) => ({
+    left: box.x + LANE_PADDING_X - GUTTER - extra(index),
     right: box.x + LANE_PADDING_X,
   }));
   const lastContentRight = (placedStores[placedStores.length - 1]?.box.x ?? DIAGRAM_MARGIN) + LANE_PADDING_X + LANE_CONTENT_WIDTH;
-  corridors.push({ left: lastContentRight, right: lastContentRight + gutter });
+  corridors.push({ left: lastContentRight, right: lastContentRight + GUTTER + extra(stores.length) });
 
   return {
-    width: Math.ceil(DIAGRAM_MARGIN * 2 + stores.length * laneBoxWidth + Math.max(0, stores.length - 1) * LANE_GAP),
+    width: Math.ceil(contentRight + DIAGRAM_MARGIN),
     height: Math.ceil(laneBottom + DIAGRAM_MARGIN),
     stores: placedStores,
     tables,
@@ -148,8 +179,8 @@ export type RoutedRelation = {
 
 type Plan = {
   relation: Relation;
-  from: { x: number; y: number; side: "left" | "right" };
-  to: { x: number; y: number; side: "left" | "right" };
+  from: { x: number; y: number; side: Side };
+  to: { x: number; y: number; side: Side };
   /** Corridors the route runs a vertical leg in, source side first. */
   corridors: number[];
   over: number | undefined;
@@ -163,59 +194,75 @@ const portOf = (layout: DataModelLayout, table: string, column: string): Port | 
   return placed === undefined || row === undefined ? undefined : { table: placed, row };
 };
 
-const faceX = (box: Box, side: "left" | "right"): number => (side === "left" ? box.x : box.x + box.width);
+const faceX = (box: Box, side: Side): number => (side === "left" ? box.x : box.x + box.width);
+
+/** Whether a corridor's run could carry a pill of this width without the pill crossing the cards either side. */
+const pillFitsCorridor = (label: string | undefined): boolean =>
+  label === undefined || pillSize(label).width + PILL_CARD_CLEARANCE * 2 <= GUTTER;
+
+type Side = "left" | "right";
+
+type LanePlan = {
+  fromSide: Side;
+  toSide: Side;
+  /** Corridors the route runs a vertical leg in, source side first. */
+  corridors: number[];
+  over: boolean;
+};
 
 /**
- * Where each route goes, before any track is chosen. A neighbouring lane is
- * reached through the corridor between; the same lane steps out into the
- * corridor beside it and back; a lane further away is crossed above the lanes.
+ * Where a route goes, from lane indices alone. A neighbouring lane is reached
+ * through the corridor between; the same lane steps out into the corridor
+ * beside it and back; a lane further away is crossed above the lanes.
+ *
+ * A labelled relation whose pill would not fit a corridor also crosses above,
+ * entering its target from the far face so the top run is a lane wide: the
+ * one straight run long enough to carry its words clear of every card.
  */
-const plan = (layout: DataModelLayout, relation: Relation): Plan | undefined => {
-  const from = portOf(layout, relation.from.table, relation.from.column);
-  const to = portOf(layout, relation.to.table, relation.to.column);
-  if (from === undefined || to === undefined) return undefined;
-
-  const la = from.table.laneIndex;
-  const lb = to.table.laneIndex;
-  const last = layout.stores.length - 1;
-  const base = { relation, over: undefined };
+const planLanes = (la: number, lb: number, last: number, label: string | undefined): LanePlan => {
+  const lift = !pillFitsCorridor(label);
 
   if (la === lb) {
     // ponytail: the corridor to the right, or the left for the last lane; a one-lane
     // diagram with many self-keys gets a busy corridor, widen it when that shows.
     const corridor = la < last ? la + 1 : la;
-    const side = corridor === la + 1 ? "right" : "left";
-    return {
-      ...base,
-      from: { x: faceX(from.table.box, side), y: from.row.centre, side },
-      to: { x: faceX(to.table.box, side), y: to.row.centre, side },
-      corridors: [corridor],
-    };
+    const side: Side = corridor === la + 1 ? "right" : "left";
+    if (!lift) return { fromSide: side, toSide: side, corridors: [corridor], over: false };
+    const farSide: Side = side === "right" ? "left" : "right";
+    return { fromSide: side, toSide: farSide, corridors: [corridor, farSide === "left" ? lb : lb + 1], over: true };
   }
 
   const rightward = la < lb;
-  const fromSide = rightward ? "right" : "left";
-  const toSide = rightward ? "left" : "right";
-  const ends = {
-    from: { x: faceX(from.table.box, fromSide), y: from.row.centre, side: fromSide },
-    to: { x: faceX(to.table.box, toSide), y: to.row.centre, side: toSide },
-  } as const;
+  const fromSide: Side = rightward ? "right" : "left";
+  const nearSide: Side = rightward ? "left" : "right";
 
-  if (Math.abs(la - lb) === 1) return { ...base, ...ends, corridors: [Math.max(la, lb)] };
+  if (Math.abs(la - lb) === 1 && !lift)
+    return { fromSide, toSide: nearSide, corridors: [Math.max(la, lb)], over: false };
+  if (Math.abs(la - lb) === 1)
+    return { fromSide, toSide: fromSide, corridors: rightward ? [la + 1, lb + 1] : [la, lb], over: true };
+  return { fromSide, toSide: nearSide, corridors: rightward ? [la + 1, lb] : [la, lb + 1], over: true };
+};
 
+const plan = (layout: DataModelLayout, relation: Relation): Plan | undefined => {
+  const from = portOf(layout, relation.from.table, relation.from.column);
+  const to = portOf(layout, relation.to.table, relation.to.column);
+  if (from === undefined || to === undefined) return undefined;
+
+  const lanes = planLanes(from.table.laneIndex, to.table.laneIndex, layout.stores.length - 1, relation.label);
+  const end = (port: Port, side: Side) => ({ x: faceX(port.table.box, side), y: port.row.centre, side });
   return {
-    ...base,
-    ...ends,
-    corridors: rightward ? [la + 1, lb] : [la, lb + 1],
-    over: 0,
+    relation,
+    from: end(from, lanes.fromSide),
+    to: end(to, lanes.toSide),
+    corridors: lanes.corridors,
+    over: lanes.over ? 0 : undefined,
   };
 };
 
 const spread = (left: number, right: number, count: number): number[] => {
+  // The layout widened the corridor for its legs, so the pitch never falls below the floor here.
   const room = right - left - TRACK_CLEARANCE * 2;
-  // ponytail: a corridor fuller than its floor allows keeps the floor pitch and
-  // overflows its clearance; the architecture lens widens lanes instead.
-  const pitch = count < 2 ? 0 : Math.max(TRACK_PITCH_MIN, Math.min(TRACK_PITCH_MAX, room / (count - 1)));
+  const pitch = count < 2 ? 0 : Math.min(TRACK_PITCH_MAX, room / (count - 1));
   const start = (left + right) / 2 - (pitch * (count - 1)) / 2;
   return Array.from({ length: count }, (_, index) => start + index * pitch);
 };

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { LANE_TOP, TABLE_ROW_HEIGHT } from "../src/design.js";
 import type { Box, Point } from "../src/geometry.js";
 import { layoutDataModel, routeRelations, type DataModelLayout } from "../src/layout/datamodel.js";
+import { render } from "../src/index.js";
 import { resolveScope } from "../src/scope.js";
+import { twoStoresGraph } from "./two-stores.js";
 
 const graph = resolveScope(billingOrgGraph, { kind: "all" });
 const layout: DataModelLayout = layoutDataModel(graph);
@@ -71,5 +73,47 @@ describe("relations route around the tables", () => {
         expect(centre).toBeGreaterThan(placed.box.y);
         expect(centre).toBeLessThan(placed.box.y + placed.box.height);
       }
+  });
+});
+
+describe("a label between neighbouring lanes", () => {
+  const two = resolveScope(twoStoresGraph, { kind: "all" });
+  const laid = layoutDataModel(two);
+  const routes = routeRelations(laid, two.relations);
+
+  const overlaps = (a: Box, b: Box): boolean =>
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+  it("rides above the lanes, so its pill crosses no table", () => {
+    for (const route of routes) {
+      if (route.pill === undefined) continue;
+      for (const placed of laid.tables)
+        expect(overlaps(route.pill, placed.box), `${route.relation.id} pill over ${placed.table.id}`).toBe(false);
+      expect(route.pill.y + route.pill.height).toBeLessThan(laid.laneTop);
+    }
+  });
+
+  it("leaves unlabelled neighbours on the corridor route", () => {
+    const corridor = routes.find(({ relation }) => relation.id === "sub-org");
+    expect(corridor?.waypoints).toHaveLength(4);
+    expect(Math.min(...(corridor?.waypoints.map(({ y }) => y) ?? []))).toBeGreaterThan(laid.laneTop);
+  });
+
+  it("still never crosses a table it does not end on", () => {
+    for (const route of routes) {
+      const ends = new Set([route.relation.from.table, route.relation.to.table]);
+      for (const placed of laid.tables) {
+        if (ends.has(placed.table.id)) continue;
+        route.waypoints.forEach((point, index) => {
+          const previous = route.waypoints[index - 1];
+          if (previous !== undefined)
+            expect(legCrosses(previous, point, placed.box), `${route.relation.id} crosses ${placed.table.id}`).toBe(false);
+        });
+      }
+    }
+  });
+
+  it("draws", () => {
+    expect(render(twoStoresGraph, { lens: "data-model", theme: "dark" }).svg).toContain("billed to the user until now");
   });
 });
