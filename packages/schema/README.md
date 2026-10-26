@@ -194,7 +194,7 @@ A stored map describes a system rather than a change, so everything in it is `un
 ```yaml
 # .github/pr-lens.yml
 schemaVersion: 0.1.0
-lenses: [architecture, data-flow]
+lenses: [architecture, data-flow, data-model]
 branding: true
 glossary: docs/CONTEXT.md#Language
 github:

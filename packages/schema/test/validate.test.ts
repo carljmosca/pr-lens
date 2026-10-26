@@ -529,7 +529,7 @@ describe("config validation", () => {
   it("fills in the defaults a repository omits", () => {
     const result = safeParseConfig({ schemaVersion: SCHEMA_VERSION });
     if (!result.ok) throw result.error;
-    expect(result.value.lenses).toEqual(["architecture", "data-flow"]);
+    expect(result.value.lenses).toEqual(["architecture", "data-flow", "data-model"]);
     expect(result.value.branding).toBe(true);
     expect(result.value.map).toEqual({ rename: [], exclude: [], lane: [], group: [] });
   });

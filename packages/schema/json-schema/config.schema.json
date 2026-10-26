@@ -13,7 +13,8 @@
     "lenses": {
       "default": [
         "architecture",
-        "data-flow"
+        "data-flow",
+        "data-model"
       ],
       "description": "Lenses to render for this repository.",
       "minItems": 1,
