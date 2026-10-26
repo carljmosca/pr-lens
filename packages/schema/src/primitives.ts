@@ -87,7 +87,7 @@ export const FullSha = z
  * version may introduce further lenses, and consumers must treat an unknown
  * lens as "skip this view" rather than as a hard failure.
  */
-export const Lens = z.enum(["architecture", "data-flow"]).describe("Rendering lens.");
+export const Lens = z.enum(["architecture", "data-flow", "data-model"]).describe("Rendering lens.");
 export type Lens = z.infer<typeof Lens>;
 
 export const LENSES = Lens.options;
