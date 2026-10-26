@@ -63,7 +63,7 @@ const pointAt = (curve: Curve, t: number): Point => {
   return pointOnSegment(segmentStart(curve, index), segment, scaled - index);
 };
 
-const pathOf = (curve: Curve): string =>
+export const pathOf = (curve: Curve): string =>
   `M${coord(curve.from.x)},${coord(curve.from.y)}` +
   curve.segments
     .map((segment) => {
@@ -548,7 +548,7 @@ const KAPPA = 0.5523;
  * the radius from the longer leg is the known failure — it balloons a route
  * with one short leg clear out of the corridor the planner put it in.
  */
-const curveThrough = (points: readonly Point[]): Curve => {
+export const curveThrough = (points: readonly Point[]): Curve => {
   const first = points[0] ?? { x: 0, y: 0 };
   const segments: Segment[] = [];
 
@@ -588,7 +588,7 @@ const curveThrough = (points: readonly Point[]): Curve => {
 };
 
 /** The midpoint of the longest straight run, or the route's middle if it only bends. */
-const labelAnchorOf = (curve: Curve): Point => {
+export const labelAnchorOf = (curve: Curve): Point => {
   let best: { length: number; middle: Point } | undefined;
   curve.segments.forEach((segment, index) => {
     if (segment.kind !== "line") return;

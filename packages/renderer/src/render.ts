@@ -8,6 +8,7 @@ import { findView, flattenViews, resolveScope, type ScopedGraph } from "./scope.
 import { paletteFor, THEME_PAIR, type Theme } from "./theme.js";
 import { paintArchitecture } from "./svg/architecture.js";
 import { paintDataFlow } from "./svg/dataflow.js";
+import { paintDataModel } from "./svg/datamodel.js";
 import { svgDocument } from "./svg/document.js";
 
 export type RenderOptions = {
@@ -59,6 +60,11 @@ const paint = (
         ...painting,
         animated: graph.flows.some((flow) => flow.messages.some((message) => message.animated)),
       };
+    }
+    case "data-model": {
+      if (graph.tables.length === 0)
+        throw new PrLensRenderError("NOTHING_TO_RENDER", "no tables are in scope for this view");
+      return { ...paintDataModel(graph, palette), animated: false };
     }
     default:
       return assertNever(lens, "Unhandled lens");
@@ -167,7 +173,18 @@ export const renderAll = (doc: GraphDoc, options: RenderAllOptions = {}): Render
           .filter((view) => prepared.lenses.includes(view.lens))
           .map((view) => ({ lens: view.lens, view }))
       : prepared.lenses
-          .filter((lens) => lens !== "data-flow" || prepared.flows.length > 0)
+          .filter((lens) => {
+            switch (lens) {
+              case "architecture":
+                return true;
+              case "data-flow":
+                return prepared.flows.length > 0;
+              case "data-model":
+                return prepared.dataModel !== undefined;
+              default:
+                return assertNever(lens, "Unhandled lens");
+            }
+          })
           .map((lens) => ({ lens, view: undefined }));
 
   /**
