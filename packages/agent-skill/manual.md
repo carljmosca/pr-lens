@@ -12,7 +12,7 @@ Decide where the diagram lands before you write it: a canvas, or an SVG and a pu
 
    If not expressing a code diff, read the code to be visually represented
 
-2. **Write the document** to `.pr-lens/graph.json`, following `references/graph-document.md`. `references/example.graph.json` is valid reference with three lanes, all four delta states, a hero edge, a seven-step flow, a nested drill-down tree and a six-step walkthrough. Read it before you write your first one. It is quicker than reading the reference. If it is going to a canvas, give every flow step (`messages`) that moves data a `payload` as you write it. "Sample traffic on a flow step" below says what goes in one. Only a flow step carries one. Flows need the `data-flow` lens, so an architecture view draws none.
+2. **Write the document** to `.pr-lens/graph.json`, following `references/graph-document.md`. `references/example.graph.json` is valid reference with three lanes, all four delta states, a hero edge, a seven-step flow, a nested drill-down tree and a six-step walkthrough. Read it before you write your first one. It is quicker than reading the reference. If it is going to a canvas, give every flow step (`messages`) that moves data a `payload` as you write it. "Sample traffic on a flow step" below says what goes in one. Only a flow step carries one. Flows need the `data-flow` lens, so an architecture view draws none. A change that touches a migration, an ORM model or a schema file also gets a `dataModel`, under the `data-model` lens: the tables it changes, a delta per column, and a relation per foreign key. "Data model" in the reference says what goes in one.
 
 3. **Validate, and fix**
 
@@ -373,7 +373,7 @@ Seven rules cannot be expressed in JSON Schema and are checked only by the parse
 When someone says the diagram is wrong (a node is misnamed, a folder should not be on it, something sits in the wrong lane), do not edit the generated document. It is regenerated on every run. Write the correction into `.github/pr-lens.yml`, which is an overlay applied over fresh inference every time:
 
 ```yaml
-schemaVersion: 0.2.0
+schemaVersion: 0.3.0
 map:
   rename:
     - match: functions/src/broadcast/sendBroadcastBulk.ts
