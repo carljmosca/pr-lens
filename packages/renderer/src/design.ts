@@ -85,7 +85,9 @@ export const TABLE_ROW_TYPE_SIZE = 9.5;
 export const TABLE_ROWS_MAX = 24;
 export const TABLE_UNCHANGED_ROWS_MAX = 8;
 export const TABLE_FOLD_MIN_HIDDEN = 4;
-export const TABLE_FOLD_HEIGHT = 22;
+/** The fold row: a breath after the last column, the dashed rule, then a row for the count. */
+export const TABLE_FOLD_GAP = TABLE_ROWS_PADDING_Y;
+export const TABLE_FOLD_HEIGHT = TABLE_FOLD_GAP + TABLE_ROW_HEIGHT;
 export const KEY_CHIP_WIDTH = 24;
 export const KEY_CHIP_HEIGHT = 14;
 export const KEY_CHIP_GAP = 8;

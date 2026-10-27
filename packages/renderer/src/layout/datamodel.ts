@@ -14,6 +14,7 @@ import {
   PILL_CARD_CLEARANCE,
   PORT_FAN_MAX,
   ROW_GAP,
+  TABLE_FOLD_GAP,
   TABLE_FOLD_HEIGHT,
   TABLE_FOLD_MIN_HIDDEN,
   TABLE_ROW_HEIGHT,
@@ -33,7 +34,7 @@ import { pillSize } from "./labels.js";
 
 export type PlacedColumn = { column: TableColumn; top: number; centre: number };
 
-/** The closing row of a folded card: how many columns it does not draw. */
+/** The closing row of a folded card: how many columns it does not draw. `top` is its dashed rule. */
 export type PlacedFold = { hidden: number; unchangedOnly: boolean; top: number; centre: number };
 
 export type PlacedTable = {
@@ -233,7 +234,7 @@ export const layoutDataModel = (graph: ScopedGraph): DataModelLayout => {
       const fold = foldColumns(table, graph.relations);
       const box = { x, y, width: LANE_CONTENT_WIDTH, height: tableHeight(fold) };
       const rowsTop = y + CARD_HEIGHT_WITH_SUBTITLE + TABLE_ROWS_PADDING_Y;
-      const foldTop = rowsTop + fold.shown.length * TABLE_ROW_HEIGHT;
+      const foldTop = rowsTop + fold.shown.length * TABLE_ROW_HEIGHT + TABLE_FOLD_GAP;
       tables.push({
         table,
         box,
@@ -246,7 +247,7 @@ export const layoutDataModel = (graph: ScopedGraph): DataModelLayout => {
         fold:
           fold.hidden === 0
             ? undefined
-            : { hidden: fold.hidden, unchangedOnly: fold.unchangedOnly, top: foldTop, centre: foldTop + TABLE_FOLD_HEIGHT / 2 },
+            : { hidden: fold.hidden, unchangedOnly: fold.unchangedOnly, top: foldTop, centre: foldTop + TABLE_ROW_HEIGHT / 2 },
         laneIndex,
       });
       y += box.height + ROW_GAP;
