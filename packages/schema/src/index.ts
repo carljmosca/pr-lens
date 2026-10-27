@@ -7,6 +7,7 @@ export {
   DELTAS,
   FileRef,
   FullSha,
+  HttpUrl,
   Id,
   jsonDepth,
   JsonPath,

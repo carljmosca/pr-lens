@@ -114,8 +114,20 @@ const proseMd = (value: string): string =>
     .replace(/<(?=[A-Za-z/!?])/g, "<\u200B")
     .replace(/([@#])(?=[\w-])/g, "$1\u200B");
 
+const requireHttpHref = (rawUrl: string): string => {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new PrLensCliError("USAGE", `asset URL is not a valid URL: ${rawUrl}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+    throw new PrLensCliError("USAGE", `asset URL must use http: or https: (${rawUrl})`);
+  return rawUrl;
+};
+
 const href = (asset: RenderAsset, assetBaseUrl: string | undefined): string => {
-  if (asset.url !== undefined) return asset.url;
+  if (asset.url !== undefined) return requireHttpHref(asset.url);
   if (asset.path === undefined || assetBaseUrl === undefined)
     throw new PrLensCliError(
       "USAGE",
@@ -123,7 +135,7 @@ const href = (asset: RenderAsset, assetBaseUrl: string | undefined): string => {
       "pass --asset-base-url with the location the rendered SVGs are published at",
     );
 
-  return `${assetBaseUrl.replace(/\/+$/, "")}/${asset.path.replace(/^\/+/, "")}`;
+  return requireHttpHref(`${assetBaseUrl.replace(/\/+$/, "")}/${asset.path.replace(/^\/+/, "")}`);
 };
 
 /** A bare markdown destination: the characters that would end or nest it are percent-encoded. */

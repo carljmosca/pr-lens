@@ -137,7 +137,7 @@
           "url": {
             "description": "Where the asset is published, once it has been uploaded.",
             "type": "string",
-            "format": "uri"
+            "pattern": "^https?:\\/\\/"
           },
           "path": {
             "description": "Local path, for surfaces that write files instead of uploading.",

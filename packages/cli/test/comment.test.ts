@@ -91,6 +91,20 @@ test("a local render with nowhere to point says which flag is missing", () => {
   ).toThrow(expect.objectContaining({ code: "USAGE" }));
 });
 
+test.each(["javascript:alert(1)", "data:image/svg+xml,<svg/>", "file:///etc/passwd"])(
+  "an --asset-base-url with scheme %s is refused",
+  (badBaseUrl) => {
+    expect(() =>
+      composeComment({
+        graph: minimalGraph,
+        manifest: localManifest([asset({})]),
+        assetBaseUrl: badBaseUrl,
+        branding: true,
+      }),
+    ).toThrow(expect.objectContaining({ code: "USAGE" }));
+  },
+);
+
 test("branding is one line, and it comes off", () => {
   const options = {
     graph: postmarkRefactorGraph,

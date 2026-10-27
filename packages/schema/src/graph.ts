@@ -5,6 +5,7 @@ import {
   Delta,
   DetailLine,
   FileRef,
+  HttpUrl,
   Id,
   jsonDepth,
   JsonPath,
@@ -615,7 +616,7 @@ export const Provenance = z
       .strictObject({
         number: z.int().min(1),
         title: z.string().min(1).max(512).optional(),
-        url: z.url().optional(),
+        url: HttpUrl.optional(),
       })
       .optional(),
     generator: z

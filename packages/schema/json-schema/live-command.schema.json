@@ -693,7 +693,7 @@
                     },
                     "url": {
                       "type": "string",
-                      "format": "uri"
+                      "pattern": "^https?:\\/\\/"
                     }
                   },
                   "required": [

@@ -523,6 +523,29 @@ describe("the drill-down tree and the render it implies", () => {
     expect(safeParseRenderManifest(manifestOf(MAX_RENDER_ASSETS)).ok).toBe(true);
     expect(safeParseRenderManifest(manifestOf(MAX_RENDER_ASSETS + 1)).ok).toBe(false);
   });
+
+  it.each(["javascript:alert(1)", "data:text/html,hi", "ftp://example.com/a.svg"])(
+    "rejects non-HTTP(S) URL %s in a render manifest or pull request provenance",
+    (badUrl) => {
+      const asset = postmarkRefactorManifestInput.assets[0]!;
+      expect(
+        safeParseRenderManifest({
+          ...postmarkRefactorManifestInput,
+          assets: [{ ...asset, url: badUrl }],
+        }).ok,
+      ).toBe(false);
+
+      expect(
+        safeParseGraphDoc({
+          ...minimalGraphInput,
+          provenance: {
+            ...minimalGraphInput.provenance,
+            pullRequest: { number: 1, url: badUrl },
+          },
+        }).ok,
+      ).toBe(false);
+    },
+  );
 });
 
 describe("config validation", () => {

@@ -98,6 +98,15 @@ export const FullSha = z
   .describe("Git commit sha, in full.");
 
 /**
+ * URLs land in comment links and image sources, so schemes like `javascript:`
+ * or `data:` that `z.url()` alone accepts are refused at the contract boundary.
+ */
+export const HttpUrl = z
+  .url()
+  .regex(/^https?:\/\//, "must be an http:// or https:// URL");
+export type HttpUrl = z.infer<typeof HttpUrl>;
+
+/**
  * The two lenses PR Lens ships. The enum is additive: a future contract
  * version may introduce further lenses, and consumers must treat an unknown
  * lens as "skip this view" rather than as a hard failure.
