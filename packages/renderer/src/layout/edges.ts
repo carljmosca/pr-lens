@@ -588,7 +588,7 @@ export const curveThrough = (points: readonly Point[]): Curve => {
 };
 
 /** The midpoint of the longest straight run, or the route's middle if it only bends. */
-export const labelAnchorOf = (curve: Curve): Point => {
+const labelAnchorOf = (curve: Curve): Point => {
   let best: { length: number; middle: Point } | undefined;
   curve.segments.forEach((segment, index) => {
     if (segment.kind !== "line") return;

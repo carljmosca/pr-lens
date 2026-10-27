@@ -213,7 +213,12 @@ const paintRelation = (routed: RoutedRelation, palette: Palette): { markup: stri
 
   return {
     markup: lines([
-      tag("path", { class: classes.join(" "), d: path, "marker-end": markerFor(tone), ...relationAttributes(relation, palette) }),
+      tag("path", {
+        class: classes.join(" "),
+        d: path,
+        "marker-end": routed.head ? markerFor(tone) : undefined,
+        ...relationAttributes(relation, palette),
+      }),
       tag("circle", {
         class: "port",
         cx: coord(curve.from.x),

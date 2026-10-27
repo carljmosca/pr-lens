@@ -5,6 +5,8 @@ import type { Box, Point } from "../src/geometry.js";
 import { layoutDataModel, routeRelations, type DataModelLayout } from "../src/layout/datamodel.js";
 import { render } from "../src/index.js";
 import { resolveScope } from "../src/scope.js";
+import { oneStoreGraph } from "./one-store.js";
+import { tenantsGraph } from "./tenants.js";
 import { twoStoresGraph } from "./two-stores.js";
 
 const graph = resolveScope(billingOrgGraph, { kind: "all" });
@@ -115,5 +117,86 @@ describe("a label between neighbouring lanes", () => {
 
   it("draws", () => {
     expect(render(twoStoresGraph, { lens: "data-model", theme: "dark" }).svg).toContain("billed to the user until now");
+  });
+});
+
+describe("twelve keys into one tenant", () => {
+  const scoped = resolveScope(tenantsGraph, { kind: "all" });
+  const laid = layoutDataModel(scoped);
+  const routes = routeRelations(laid, scoped.relations);
+
+  it("puts the store the keys point into in the middle lane", () => {
+    expect(laid.stores.map(({ store }) => store.id)).toEqual(["billing", "identity", "platform"]);
+  });
+
+  it("keeps a store order the document sets", () => {
+    const ordered = layoutDataModel({
+      ...scoped,
+      stores: scoped.stores.map((store, index) => ({ ...store, order: index })),
+    });
+    expect(ordered.stores.map(({ store }) => store.id)).toEqual(["identity", "billing", "platform"]);
+  });
+
+  it("lands one head per tone from the side a trunk gathers on, and a short fan from the other", () => {
+    const arrivals = routes.filter(({ relation }) => relation.to.table === "tenants" && relation.to.column === "id");
+    expect(arrivals).toHaveLength(12);
+    const heads = new Map<string, number>();
+    for (const route of arrivals) {
+      if (!route.head) continue;
+      const side = (route.waypoints[route.waypoints.length - 2]?.x ?? 0) < (route.waypoints[route.waypoints.length - 1]?.x ?? 0) ? "left" : "right";
+      const key = `${side}/${route.relation.delta}`;
+      heads.set(key, (heads.get(key) ?? 0) + 1);
+    }
+    // Ten keys arrive from the right: identity's own two and platform's eight, one trunk, one head.
+    expect(heads.get("right/added")).toBe(1);
+    // Billing's two arrive from the left, under the trunk threshold, so they keep their own heads.
+    expect(heads.get("left/added")).toBe(2);
+    expect(heads.size).toBe(2);
+  });
+
+  it("gathers a trunk on one track, landing on the row's centre", () => {
+    const fromPlatform = routes.filter(({ relation }) => relation.from.table.startsWith("web"));
+    const xs = new Set(fromPlatform.map(({ waypoints }) => waypoints[waypoints.length - 2]?.x));
+    const ys = new Set(fromPlatform.map(({ waypoints }) => waypoints[waypoints.length - 1]?.y));
+    expect(xs.size).toBe(1);
+    expect(ys.size).toBe(1);
+  });
+
+  it("never crosses a table it does not end on", () => {
+    for (const route of routes) {
+      const ends = new Set([route.relation.from.table, route.relation.to.table]);
+      for (const placed of laid.tables) {
+        if (ends.has(placed.table.id)) continue;
+        route.waypoints.forEach((point, index) => {
+          const previous = route.waypoints[index - 1];
+          if (previous !== undefined)
+            expect(legCrosses(previous, point, placed.box), `${route.relation.id} crosses ${placed.table.id}`).toBe(false);
+        });
+      }
+    }
+  });
+
+  it("draws", () => {
+    const { svg } = render(tenantsGraph, { lens: "data-model", theme: "dark" });
+    expect((svg.match(/marker-end="url\(#mk-added\)"/g) ?? []).length).toBeLessThan(12);
+  });
+});
+
+describe("a label within one store", () => {
+  const scoped = resolveScope(oneStoreGraph, { kind: "all" });
+  const laid = layoutDataModel(scoped);
+  const routes = routeRelations(laid, scoped.relations);
+  const overlaps = (a: Box, b: Box): boolean =>
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+  it("sits its pill on the top run, above the lanes and over no table", () => {
+    const labelled = routes.filter(({ pill }) => pill !== undefined);
+    expect(labelled.length).toBeGreaterThan(0);
+    for (const route of labelled) {
+      const pill = route.pill!;
+      expect(pill.y + pill.height).toBeLessThan(laid.laneTop);
+      for (const placed of laid.tables)
+        expect(overlaps(pill, placed.box), `${route.relation.id} pill over ${placed.table.id}`).toBe(false);
+    }
   });
 });
