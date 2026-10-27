@@ -158,9 +158,6 @@ const TRUNK_MIN = 4;
 const trunkKey = (relation: Relation, toSide: Side): string =>
   `${relation.to.table}\u0000${relation.to.column}\u0000${toSide}\u0000${relation.delta}`;
 
-/** The corridor a route's last leg runs in, where a trunk would gather. */
-const arrivalCorridor = (corridors: readonly number[]): number | undefined => corridors[corridors.length - 1];
-
 /**
  * What the routes ask of the gaps before anything is placed: how many cross
  * above the lanes, and how many legs each corridor carries. Both follow from
@@ -414,7 +411,7 @@ export const routeRelations = (
     return planned === undefined ? [] : [planned];
   });
 
-  // A trunk is every route that lands on one column from one side in one tone, from three up.
+  // A trunk is every route that lands on one column from one side in one tone, from TRUNK_MIN up.
   const trunkOf = new Map<Plan, string>();
   {
     const groups = new Map<string, Plan[]>();
