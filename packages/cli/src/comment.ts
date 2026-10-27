@@ -208,6 +208,8 @@ const lensLabel = (lens: Lens): string => {
       return "Architecture";
     case "data-flow":
       return "Data flow";
+    case "data-model":
+      return "Data model";
     default:
       return assertNever(lens, "Unhandled lens");
   }

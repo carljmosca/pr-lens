@@ -278,6 +278,7 @@ describe("view scoping", () => {
       nodes: ["send-broadcast-bulk", "postmark"],
       edges: [],
       flows: [],
+      tables: [],
     });
     expect(scoped.edges.map((edge) => edge.id)).toEqual(["bulk-to-postmark"]);
   });

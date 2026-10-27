@@ -155,7 +155,7 @@ test("show sorts its focus by what the drawing calls each id", async () => {
     {
       kind: "show",
       stage: { kind: "flow", flow: "send-pipeline" },
-      focus: { kind: "selection", lanes: [], nodes: ["queue-route"], edges: [], messages: ["send-pipeline/enqueue"] },
+      focus: { kind: "selection", lanes: [], nodes: ["queue-route"], edges: [], messages: ["send-pipeline/enqueue"], tables: [] },
     },
   ]);
   expect(output.out).toEqual([`✓ moved ${FIRST}`, "  the reader's tab is following along"]);

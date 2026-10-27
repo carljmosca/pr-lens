@@ -17,10 +17,12 @@ export type RenderAtlas = {
   edges: Record<string, Box>;
   /** Keyed by flow, then by step: a flow step's id is unique only inside its own flow. */
   messages: Record<string, Record<string, Box>>;
+  /** The data-model lens's cards; its stores land in `lanes` and its relations in `edges`. */
+  tables: Record<string, Box>;
 };
 
 /** An atlas for a drawing that has placed nothing. */
-export const emptyAtlas = (): RenderAtlas => ({ lanes: {}, nodes: {}, edges: {}, messages: {} });
+export const emptyAtlas = (): RenderAtlas => ({ lanes: {}, nodes: {}, edges: {}, messages: {}, tables: {} });
 
 export type AtlasEntry = { id: string; box: Box };
 

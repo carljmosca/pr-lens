@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.2.0",
+  "schemaVersion": "0.3.0",
   "kind": "graph",
   "generatedAt": "2026-08-19T18:24:00.000Z",
   "title": "Batch broadcast sending through Postmark",
@@ -518,7 +518,8 @@
               "bulk-to-postmark",
               "bulk-to-firestore"
             ],
-            "flows": []
+            "flows": [],
+            "tables": []
           },
           "defaultOpen": false,
           "children": []
@@ -540,7 +541,8 @@
               "process-to-single",
               "single-to-postmark"
             ],
-            "flows": []
+            "flows": [],
+            "tables": []
           },
           "defaultOpen": false,
           "children": []
@@ -558,7 +560,8 @@
         "edges": [],
         "flows": [
           "send-pipeline"
-        ]
+        ],
+        "tables": []
       },
       "defaultOpen": false,
       "children": []
@@ -583,7 +586,8 @@
             "postmark"
           ],
           "edges": [],
-          "messages": []
+          "messages": [],
+          "tables": []
         }
       },
       {
@@ -602,7 +606,8 @@
             "postmark"
           ],
           "edges": [],
-          "messages": []
+          "messages": [],
+          "tables": []
         }
       },
       {
@@ -621,7 +626,8 @@
             "send-single-email"
           ],
           "edges": [],
-          "messages": []
+          "messages": [],
+          "tables": []
         }
       },
       {
@@ -652,7 +658,8 @@
           "messages": [
             "batch-post",
             "batch-results"
-          ]
+          ],
+          "tables": []
         }
       },
       {

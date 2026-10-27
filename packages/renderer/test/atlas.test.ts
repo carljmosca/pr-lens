@@ -11,7 +11,18 @@ import { tiers } from "./tiers.js";
 
 /** Every lens a document declares that it can actually draw something in. */
 const drawableLenses = (doc: GraphDoc): Lens[] =>
-  doc.lenses.filter((lens) => lens !== "data-flow" || doc.flows.length > 0);
+  doc.lenses.filter((lens) => {
+    switch (lens) {
+      case "architecture":
+        return true;
+      case "data-flow":
+        return doc.flows.length > 0;
+      case "data-model":
+        return doc.dataModel !== undefined;
+      default:
+        return assertNever(lens, "Unhandled lens");
+    }
+  });
 
 const wholeDocument = (doc: GraphDoc): ScopedGraph => resolveScope(doc, { kind: "all" });
 
@@ -23,7 +34,7 @@ const wholeDocument = (doc: GraphDoc): ScopedGraph => resolveScope(doc, { kind: 
 const expectedKeys = (
   lens: Lens,
   graph: ScopedGraph,
-): { lanes: string[]; nodes: string[]; edges: string[]; messages: Record<string, string[]> } => {
+): { lanes: string[]; nodes: string[]; edges: string[]; messages: Record<string, string[]>; tables: string[] } => {
   switch (lens) {
     case "architecture":
       return {
@@ -31,6 +42,15 @@ const expectedKeys = (
         nodes: graph.nodes.map((node) => node.id),
         edges: graph.edges.map((edge) => edge.id),
         messages: {},
+        tables: [],
+      };
+    case "data-model":
+      return {
+        lanes: graph.stores.map((store) => store.id),
+        nodes: [],
+        edges: graph.relations.map((relation) => relation.id),
+        messages: {},
+        tables: graph.tables.map((table) => table.id),
       };
     case "data-flow":
       return {
@@ -46,6 +66,7 @@ const expectedKeys = (
         messages: Object.fromEntries(
           graph.flows.map((flow) => [flow.id, flow.messages.map((message) => message.id)]),
         ),
+        tables: [],
       };
     default:
       return assertNever(lens, "Unhandled lens");
@@ -94,6 +115,7 @@ describe("every drawn thing has a box, and nothing else does", () => {
         expect(sorted(Object.keys(atlas.nodes))).toEqual(sorted(expected.nodes));
         expect(sorted(Object.keys(atlas.edges))).toEqual(sorted(expected.edges));
         expect(sorted(Object.keys(atlas.messages))).toEqual(sorted(Object.keys(expected.messages)));
+        expect(sorted(Object.keys(atlas.tables))).toEqual(sorted(expected.tables));
 
         for (const [flow, steps] of Object.entries(expected.messages))
           expect(sorted(Object.keys(atlas.messages[flow] ?? {}))).toEqual(sorted(steps));
@@ -121,6 +143,7 @@ const everyBox = (atlas: RenderAtlas): Box[] => [
   ...Object.values(atlas.nodes),
   ...Object.values(atlas.edges),
   ...Object.values(atlas.messages).flatMap((flow) => Object.values(flow)),
+  ...Object.values(atlas.tables),
 ];
 
 /**

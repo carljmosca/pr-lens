@@ -483,7 +483,15 @@ const stageFor = (doc: GraphDoc | undefined, id: string | undefined): Stage => {
 const focusFor = (doc: GraphDoc | undefined, ids: readonly string[]): StepFocus => {
   if (ids.length === 0) return { kind: "all" };
   const places = doc === undefined ? undefined : placesOf(doc);
-  const focus = { kind: "selection" as const, lanes: new Array<string>(), nodes: new Array<string>(), edges: new Array<string>(), messages: new Array<string>() };
+  const focus = {
+    kind: "selection" as const,
+    lanes: new Array<string>(),
+    nodes: new Array<string>(),
+    edges: new Array<string>(),
+    messages: new Array<string>(),
+    // The terminal names components, messages, edges and lanes; a table focus is authored in the document.
+    tables: new Array<string>(),
+  };
   const unknown: string[] = [];
 
   for (const id of ids) {

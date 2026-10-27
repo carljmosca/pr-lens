@@ -10,7 +10,7 @@ Every schema here is **strict**: an unknown key is a rejection, not a warning. A
 
 ```json
 {
-  "schemaVersion": "0.2.0",
+  "schemaVersion": "0.3.0",
   "kind": "graph",
   "title": "Batch broadcast sending through Postmark",
   "summary": "One paragraph answering: what does this change do?",
@@ -25,7 +25,7 @@ Every schema here is **strict**: an unknown key is a rejection, not a warning. A
 }
 ```
 
-`lenses` declares what the document carries enough detail to draw: `architecture`, `data-flow`, or both. A document carrying flows must declare `data-flow`.
+`lenses` declares what the document carries enough detail to draw: `architecture`, `data-flow`, `data-model`, or any of them together. A document carrying flows must declare `data-flow`; one carrying a `dataModel` must declare `data-model`.
 
 `provenance` is where the document came from: the repository, the base and head commit shas (lowercase hex, 7-40 characters), optionally the pull request and the generator. When you produce a document through the CLI these are filled in from the repository, so do not invent them.
 
@@ -148,6 +148,62 @@ Up to 16, for the data-flow lens.
 - `changedPaths` is filled in when the document is stored, from `before` and `sample`. Do not write it. Up to 64 paths of the form `Metadata.batchId`, `[0].Cc` or `headers["Content-Type"]`.
 - Use placeholder values in samples: `ada@example.com`, `cmp_0001`. Never one that could belong to a real person or unlock anything.
 
+## Data model
+
+For the data-model lens. Write one only when the change touched a schema: a migration, an ORM model, a schema or a SQL file. A change that touched no schema has no data model, and the document leaves `dataModel` out.
+
+```json
+{
+  "stores": [
+    { "id": "identity", "label": "Identity", "platform": "Postgres" },
+    { "id": "billing", "label": "Billing", "platform": "Postgres" }
+  ],
+  "tables": [
+    {
+      "id": "user",
+      "label": "User",
+      "store": "identity",
+      "name": "users",
+      "delta": "modified",
+      "badges": ["−1 column"],
+      "columns": [
+        { "name": "id", "type": "uuid", "key": "primary", "delta": "unchanged" },
+        { "name": "email", "type": "citext", "delta": "unchanged" },
+        { "name": "stripe_customer_id", "type": "text", "delta": "removed" }
+      ],
+      "files": [{ "path": "migrations/0042_billing_by_org.sql", "startLine": 30, "endLine": 34 }]
+    },
+    {
+      "id": "subscription",
+      "label": "Subscription",
+      "store": "billing",
+      "name": "subscriptions",
+      "delta": "modified",
+      "badges": ["key moved"],
+      "columns": [
+        { "name": "id", "type": "uuid", "key": "primary", "delta": "unchanged" },
+        { "name": "user_id", "type": "uuid", "key": "foreign", "delta": "removed" },
+        { "name": "org_id", "type": "uuid", "key": "foreign", "delta": "added" },
+        { "name": "amount_cents", "type": "bigint", "previousType": "int", "delta": "modified" }
+      ],
+      "files": [{ "path": "migrations/0042_billing_by_org.sql", "startLine": 36, "endLine": 48 }]
+    }
+  ],
+  "relations": [
+    { "id": "subscription-user", "from": { "table": "subscription", "column": "user_id" }, "to": { "table": "user", "column": "id" }, "delta": "removed", "label": "billed to the user until now" }
+  ]
+}
+```
+
+- A `store` is a database, a schema or a namespace: the lane a table sits in, so split one database into the schemas or domains a reader would name (identity, workspace, billing) rather than one store for everything; the picture reads left to right. `label` is the team's word for it and `platform` the engine, which goes in the lane header beside the label, so do not repeat the engine in the label. 1 to 16.
+- A `table` is a table, a collection or a key family: a Mongo collection with its fields, or a Redis key pattern such as `invoice:{id}:lock` with its fields and ttl, is a table in a store whose `platform` is that engine. `label` is what a reader calls it, `name` the physical name when it differs. 1 to 64 tables, each with 1 to 64 columns. Every table names a store you declared.
+- Columns carry a delta each, so a dropped column is drawn struck through and an arrived one in green. `key` is `primary` for the table's own key, `foreign` for a column that holds another table's key, `index` for an index row; leave it out otherwise. A column whose type changed keeps the old spelling in `previousType`, so the picture says `int → bigint`. No table lists a column twice.
+- A `relation` runs from the column that holds a key to the column it points at, each end `{ "table", "column" }`, and every end must be a column that table lists. `enforced: false` draws a reference nothing enforces, such as one across stores, as a dotted line. Up to 256.
+- A key that moved from one table to another is two relations: the old one `removed`, with a `label` that is a short clause with a verb saying what was true before: who owned, held or paid for what. `user subscription` names the tables and says nothing; `shipped from the warehouse until now` on an orders key says what changed. Then the new one, `added`.
+- A column's `type` is a name as the schema spells it, up to 64 characters: `uuid`, `text[]`, `numeric(5,4)`, `timestamp with time zone`. A quote, an equals sign, a slash, a colon or a `--` is refused, because they belong to defaults, literals, connection strings and comments, and the picture shows the shape of the data, never the data. A `summary` says what a table is for and names no value.
+- Include the unchanged tables a changed key points at, marked `unchanged`, so the reader sees what hangs off the thing that moved. Leave out tables the change does not touch and nothing touched points at.
+- `files` on a table are the migration and model lines that define it; they become the diff links.
+
 ## Stats
 
 ```json
@@ -172,7 +228,7 @@ The drill-down tree in the comment: up to 32 at the root, nesting up to 32 child
 }
 ```
 
-`scope` is either `{ "kind": "all" }` (the default) or a selection naming at least one lane, node, edge or flow. The two are distinct states on purpose: removing the last element a view pointed at can never quietly turn it into a view of everything. A view's `lens` must be one the document declares.
+`scope` is either `{ "kind": "all" }` (the default) or a selection naming at least one lane, node, edge, flow or table. The two are distinct states on purpose: removing the last element a view pointed at can never quietly turn it into a view of everything. A view's `lens` must be one the document declares.
 
 ### Choosing architecture views
 
@@ -281,16 +337,18 @@ Each step has:
 - `heading`: the thing and what happened to it, up to 48 characters, in sentence case. For example "Postmark now gets 500 emails per call".
 - `body`: one line under the heading, up to 140 characters, on what the change means for behaviour. For example "One call per batch instead of one call per person". Required: a heading with no body reads as unfinished.
 - `stage`: which diagram to show. A document can have several diagrams: its views (the drill-down diagrams) and its flows (the sequence diagrams). `{ "kind": "view", "view": "overview" }` shows the view called `overview`. `{ "kind": "flow", "flow": "send-pipeline" }` shows the flow called `send-pipeline`. Leave `stage` out and the step uses the diagram the reader is already on.
-- `focus`: what to zoom in on inside that diagram. `{ "kind": "all" }`, the default, means the whole diagram. A selection means "just these things": name any lanes, nodes, edges or flow steps (`messages`) by id, and the camera zooms to them while everything else dims. A selection must name at least one thing.
-- `detail`: optional. One or two sentences under the body, up to 240 characters, that name the parts of the diagram the step is about. `text` is the sentence. `cites` turns words in it into links: each cite has `text`, copied letter for letter from the sentence, and a `ref`. A `ref` is `{ "kind": "node", "node": … }`, `{ "kind": "message", "flow": …, "message": … }`, `{ "kind": "view", "view": … }` or `{ "kind": "flow", "flow": … }`. List cites in the order the sentence says them. A detail has one to eight, and no two use the same words. Do not cite files on a canvas you push: with no pull request behind it, a file link shows as plain words.
+- `focus`: what to zoom in on inside that diagram. `{ "kind": "all" }`, the default, means the whole diagram. A selection means "just these things": name any lanes, nodes, edges, tables or flow steps (`messages`) by id, and the camera zooms to them while everything else dims. A selection must name at least one thing.
+- `detail`: optional. One or two sentences under the body, up to 240 characters, that name the parts of the diagram the step is about. `text` is the sentence. `cites` turns words in it into links: each cite has `text`, copied letter for letter from the sentence, and a `ref`. A `ref` is `{ "kind": "node", "node": … }`, `{ "kind": "message", "flow": …, "message": … }`, `{ "kind": "view", "view": … }`, `{ "kind": "flow", "flow": … }`, `{ "kind": "table", "table": … }` or `{ "kind": "column", "table": …, "column": … }`. List cites in the order the sentence says them. A detail has one to eight, and no two use the same words. Do not cite files on a canvas you push: with no pull request behind it, a file link shows as plain words.
 
 The validator checks:
 
 - Every id you name exists in the document. A flow step you name must belong to the flow the stage shows, because flow step ids are only unique inside their own flow.
 - `messages` needs a stage that shows a flow. Leave it out when the stage is an architecture view.
 - Step ids are unique within the walkthrough. Two steps minimum, twelve maximum.
-- Every cite's words are in its detail's `text`, in the order the cites are listed. The node, flow step, view or flow it points to exists in the document.
+- Every cite's words are in its detail's `text`, in the order the cites are listed. The node, flow step, view, flow, table or column it points to exists in the document.
 - A stored map never carries a walkthrough. A map describes the system; a walkthrough tells the story of one change.
+
+A step about the data model stages the view whose lens is `data-model` and focuses `tables`. That is how a moved key gets its story: "Billing follows the org", focused on the two tables it moved between, with the old and new columns cited.
 
 ## Layout
 
@@ -310,7 +368,7 @@ Repository-relative POSIX paths: no leading `/`, no drive letter, no backslash, 
 
 ## Length limits
 
-Labels 120 characters, summaries 2000, chip values 32. They are display fields: a label that needs 120 characters is a label the diagram cannot draw. On a payload side, `shape` 2048 bytes, `sample` and `before` 4096 bytes each once serialised and 8 levels deep, `changedPaths` 64 entries.
+Labels 120 characters, summaries 2000, chip values 32. A data model holds up to 16 stores, 64 tables of 64 columns each, and 256 relations. They are display fields: a label that needs 120 characters is a label the diagram cannot draw. On a payload side, `shape` 2048 bytes, `sample` and `before` 4096 bytes each once serialised and 8 levels deep, `changedPaths` 64 entries.
 
 ## Then validate
 
