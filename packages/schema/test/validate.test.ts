@@ -627,7 +627,7 @@ describe("the data model", () => {
     expect(expectRejected(cited).message).toContain("cites column 'nope' of table 'subscription'");
   });
 
-  it.each(["uuid", "text[]", "numeric(5,4)", "timestamp with time zone", "Map<String, Int>", "string?"])(
+  it.each(["uuid", "text[]", "numeric(5,4)", "timestamp with time zone", "Map<String, Int>", "string?", "date-time"])(
     "accepts %s as a type name",
     (type) => {
       const { doc, model: dataModel } = model();

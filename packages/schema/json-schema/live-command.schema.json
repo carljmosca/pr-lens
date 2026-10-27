@@ -1608,7 +1608,7 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 64,
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|]*$",
+                              "pattern": "^(?!.*--)[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|-]*$",
                               "description": "A type as the schema spells it, e.g. uuid, text[], numeric(5,4). Never a default or a value."
                             },
                             "key": {
@@ -1635,7 +1635,7 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 64,
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|]*$"
+                              "pattern": "^(?!.*--)[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|-]*$"
                             }
                           },
                           "required": [

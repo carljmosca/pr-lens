@@ -34,16 +34,17 @@ export const Label = z.string().min(1).max(120).describe("Short display label.")
 /** Prose shown in drill-down bodies; kept short enough to stay scannable. */
 /**
  * The name of a type, as a schema spells it: `uuid`, `text[]`, `numeric(5,4)`,
- * `timestamp with time zone`, `Map<String, Int>`. A quote, an equals sign, a
- * slash or a colon has no place in a type name and every place in a default,
- * a literal or a connection string, so a value that carries one is refused
- * rather than drawn: the picture shows the shape of the data, never the data.
+ * `timestamp with time zone`, `Map<String, Int>`, `date-time`. A quote, an
+ * equals sign, a slash, a colon or a `--` has no place in a type name and
+ * every place in a default, a literal, a connection string or a comment, so
+ * a value that carries one is refused rather than drawn: the picture shows
+ * the shape of the data, never the data.
  */
 export const TypeName = z
   .string()
   .min(1)
   .max(64)
-  .regex(/^[A-Za-z_][A-Za-z0-9_ .,?!<>()[\]|]*$/, "must be a type name, with no default, literal or value in it")
+  .regex(/^(?!.*--)[A-Za-z_][A-Za-z0-9_ .,?!<>()[\]|-]*$/, "must be a type name, with no default, literal or value in it")
   .describe("A type as the schema spells it, e.g. uuid, text[], numeric(5,4). Never a default or a value.");
 
 export const Summary = z
