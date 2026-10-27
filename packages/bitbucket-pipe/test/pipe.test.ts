@@ -115,7 +115,7 @@ test("the image bakes the CLI at the version the metadata pins", () => {
   // served that minute inside a pipeline holding the customer's variables.
   const baked = /ARG CLI_VERSION=(\d+\.\d+\.\d+)/.exec(dockerfile);
   expect(baked?.[1], "Dockerfile does not pin a CLI version to bake").toBeDefined();
-  expect(dockerfile).toContain('npm install -g "@coldtea/pr-lens-cli@${CLI_VERSION}"');
+  expect(dockerfile).toContain('npm install -g --ignore-scripts "@coldtea/pr-lens-cli@${CLI_VERSION}"');
   expect(dockerfile).toContain("ENV PR_LENS_BAKED_CLI_VERSION=${CLI_VERSION}");
 
   // And it is the version the pipe's own default asks for, or every run would

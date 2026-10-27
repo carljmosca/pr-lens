@@ -12,7 +12,7 @@ RUN apt-get update \
 # live, and charges them the install time on top. Pinned here, resolved once,
 # at a version this image is built and tagged against.
 ARG CLI_VERSION=0.14.0
-RUN npm install -g "@coldtea/pr-lens-cli@${CLI_VERSION}" \
+RUN npm install -g --ignore-scripts "@coldtea/pr-lens-cli@${CLI_VERSION}" \
   && npm cache clean --force
 
 # The script compares against this to decide whether the baked CLI is the one
