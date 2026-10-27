@@ -11,6 +11,11 @@ minor adds a variable, or changes a default in a way that cannot fail a
 pipeline that did not set it. A major changes or removes a variable, or
 changes a default in a way that could.
 
+## 0.1.5
+
+- The baked CLI is 0.14.0, which draws the data-model lens: the tables a
+  change touches and the keys between them, beside architecture and data flow.
+
 ## 0.1.4
 
 - The baked CLI is 0.13.3, which accepts a `glossary` in `pr-lens.yml`. 0.12.0

@@ -1,5 +1,5 @@
 name: PR Lens
-image: ghcr.io/coldteadotai/pr-lens-pipe:0.1.4
+image: ghcr.io/coldteadotai/pr-lens-pipe:0.1.5
 # One of Atlassian's fixed set, spelled as they spell it. Required: the
 # listing refuses a pipe without it.
 category: Code quality
