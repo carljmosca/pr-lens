@@ -523,6 +523,18 @@ describe("the drill-down tree and the render it implies", () => {
     expect(safeParseRenderManifest(manifestOf(MAX_RENDER_ASSETS)).ok).toBe(true);
     expect(safeParseRenderManifest(manifestOf(MAX_RENDER_ASSETS + 1)).ok).toBe(false);
   });
+
+  it.each(["../../etc/passwd", "/etc/passwd", "C:\\Windows\\system32\\file.svg", "assets\\file.svg"])(
+    "rejects a manifest asset path '%s' that escapes the render directory",
+    (path) => {
+      const asset = postmarkRefactorManifestInput.assets[0]!;
+      const result = safeParseRenderManifest({
+        ...postmarkRefactorManifestInput,
+        assets: [{ ...asset, url: undefined, path }],
+      });
+      expect(result.ok).toBe(false);
+    },
+  );
 });
 
 describe("config validation", () => {

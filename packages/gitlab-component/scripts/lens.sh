@@ -129,7 +129,7 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 for (const asset of manifest.assets) {
   if (asset.path === undefined) continue;
   const upload = JSON.parse(
-    fs.readFileSync(path.join(path.dirname(manifestPath), `${asset.path}.upload.json`), "utf8"),
+    fs.readFileSync(path.join(path.dirname(manifestPath), `${path.basename(asset.path)}.upload.json`), "utf8"),
   );
   if (!upload.full_path) {
     console.error(`the upload for ${asset.path} returned no full_path`);

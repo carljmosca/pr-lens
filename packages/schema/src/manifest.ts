@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Id, Lens, MAX_RENDER_ASSETS, SchemaVersionField, Sha, Theme } from "./primitives.js";
+import { Id, Lens, MAX_RENDER_ASSETS, RepositoryPath, SchemaVersionField, Sha, Theme } from "./primitives.js";
 
 /**
  * GitHub serves comment images through a proxy that caches aggressively, so
@@ -22,12 +22,7 @@ export const RenderAsset = z
     height: z.int().min(1),
     animated: z.boolean().default(false).describe("Contains SMIL animation."),
     url: z.url().optional().describe("Where the asset is published, once it has been uploaded."),
-    path: z
-      .string()
-      .min(1)
-      .max(1024)
-      .optional()
-      .describe("Local path, for surfaces that write files instead of uploading."),
+    path: RepositoryPath.optional().describe("Local path, for surfaces that write files instead of uploading."),
   })
   .refine((asset) => asset.url !== undefined || asset.path !== undefined, {
     message: "an asset needs a url or a path",
