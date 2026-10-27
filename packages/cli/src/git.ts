@@ -8,9 +8,12 @@ const run = promisify(execFile);
 /** Large enough for any diff worth sending to a model; a bigger one is truncated anyway. */
 const MAX_GIT_OUTPUT_BYTES = 64 * 1024 * 1024;
 
+/** Disables repository-local hooks and fsmonitor daemons when reading an untrusted checkout. */
+const SAFE_GIT_CONFIG = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"] as const;
+
 export const git = async (repo: string, args: readonly string[]): Promise<string> => {
   try {
-    const { stdout } = await run("git", [...args], {
+    const { stdout } = await run("git", [...SAFE_GIT_CONFIG, ...args], {
       cwd: repo,
       maxBuffer: MAX_GIT_OUTPUT_BYTES,
       encoding: "utf8",
@@ -35,7 +38,9 @@ export type Commit = { sha: string; ref: string | undefined };
  * it is on one, since "HEAD" tells a reader of the comment nothing.
  */
 export const resolveCommit = async (repo: string, ref: string): Promise<Commit> => {
-  const sha = (await git(repo, ["rev-parse", "--verify", `${ref}^{commit}`])).trim();
+  if (ref.startsWith("-"))
+    throw new PrLensCliError("GIT_FAILED", `invalid git ref ${JSON.stringify(ref)}`);
+  const sha = (await git(repo, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])).trim();
   if (ref !== "HEAD") return { sha, ref };
 
   const branch = (await git(repo, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
@@ -48,7 +53,10 @@ export const resolveCommit = async (repo: string, ref: string): Promise<Commit> 
  * the base branch since the fork point to this pull request.
  */
 export const mergeBase = async (repo: string, base: string, head: string): Promise<string> => {
-  const merged = await git(repo, ["merge-base", base, head]).catch(() => undefined);
+  const merged =
+    base.startsWith("-") || head.startsWith("-")
+      ? undefined
+      : await git(repo, ["merge-base", "--end-of-options", base, head]).catch(() => undefined);
   if (merged === undefined)
     throw new PrLensCliError(
       "GIT_FAILED",
@@ -95,12 +103,19 @@ export const collectDiff = async (
   head: string,
   maxPatchBytes: number,
 ): Promise<Diff> => {
-  const files = parseNumstat(await git(repo, ["diff", "--numstat", "--find-renames", base, head]));
+  if (base.startsWith("-") || head.startsWith("-"))
+    throw new PrLensCliError("GIT_FAILED", `invalid git diff range ${JSON.stringify(base)}..${JSON.stringify(head)}`);
+  const files = parseNumstat(
+    await git(repo, ["diff", "--no-ext-diff", "--no-textconv", "--numstat", "--find-renames", "--end-of-options", base, head]),
+  );
   const patch = await git(repo, [
     "diff",
+    "--no-ext-diff",
+    "--no-textconv",
     "--no-color",
     "--find-renames",
     "--unified=3",
+    "--end-of-options",
     base,
     head,
   ]);
@@ -178,7 +193,8 @@ export const parseRepoSlug = (slug: string): RepoSlug | undefined => {
 };
 
 export const remoteSlug = async (repo: string, remote: string): Promise<RepoSlug | undefined> => {
-  const url = await git(repo, ["remote", "get-url", remote]).catch(() => undefined);
+  if (remote.startsWith("-")) return undefined;
+  const url = await git(repo, ["remote", "get-url", "--", remote]).catch(() => undefined);
   return url === undefined ? undefined : parseRemoteUrl(url);
 };
 
