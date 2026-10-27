@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { PrLensRenderError, render, renderAll, THEMES } from "../src/index.js";
 import { cjkGraph } from "./cjk.js";
 import { expectGolden } from "./goldens.js";
+import { tallTablesGraph } from "./tall-tables.js";
 
 describe("golden renders", () => {
   for (const theme of THEMES) {
@@ -183,6 +184,10 @@ describe("the data-model lens", () => {
       expect(animated).toBe(false);
       expectGolden(`billing-org.data-model.${theme}.svg`, svg);
     });
+
+  it("folds the tall tables, dark", () => {
+    expectGolden("tall-tables.data-model.dark.svg", render(tallTablesGraph, { lens: "data-model", theme: "dark" }).svg);
+  });
 
   it("refuses a document that does not declare it", () => {
     const undeclared = parseGraphDoc({

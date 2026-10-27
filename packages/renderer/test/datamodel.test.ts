@@ -1,11 +1,12 @@
 import { billingOrgGraph } from "@coldtea/pr-lens-schema/examples";
 import { describe, expect, it } from "vitest";
-import { LANE_TOP, TABLE_ROW_HEIGHT } from "../src/design.js";
+import { CARD_HEIGHT_WITH_SUBTITLE, LANE_TOP, TABLE_FOLD_HEIGHT, TABLE_ROW_HEIGHT, TABLE_ROWS_MAX, TABLE_ROWS_PADDING_Y } from "../src/design.js";
 import type { Box, Point } from "../src/geometry.js";
-import { layoutDataModel, routeRelations, type DataModelLayout } from "../src/layout/datamodel.js";
+import { foldColumns, layoutDataModel, routeRelations, type DataModelLayout } from "../src/layout/datamodel.js";
 import { render } from "../src/index.js";
 import { resolveScope } from "../src/scope.js";
 import { oneStoreGraph } from "./one-store.js";
+import { tallTablesGraph } from "./tall-tables.js";
 import { tenantsGraph } from "./tenants.js";
 import { twoStoresGraph } from "./two-stores.js";
 
@@ -198,5 +199,67 @@ describe("a label within one store", () => {
       for (const placed of laid.tables)
         expect(overlaps(pill, placed.box), `${route.relation.id} pill over ${placed.table.id}`).toBe(false);
     }
+  });
+});
+
+describe("a tall table folds", () => {
+  const scoped = resolveScope(tallTablesGraph, { kind: "all" });
+  const tall = layoutDataModel(scoped);
+  const placed = (id: string) => {
+    const table = tall.tables.find((candidate) => candidate.table.id === id);
+    if (table === undefined) throw new Error(`no table '${id}'`);
+    return table;
+  };
+  const names = (id: string) => placed(id).columns.map(({ column }) => column.name);
+
+  it("keeps a new table up to the ceiling and counts the rest", () => {
+    const events = placed("analytics_events");
+    expect(events.columns).toHaveLength(TABLE_ROWS_MAX);
+    expect(events.fold).toMatchObject({ hidden: 8, unchangedOnly: false });
+    expect(placed("device_telemetry").fold).toMatchObject({ hidden: 40, unchangedOnly: false });
+  });
+
+  it("keeps a key past the ceiling because a relation ends on it", () => {
+    expect(names("analytics_events")).toContain("user_id");
+    expect(names("analytics_events").slice(0, 2)).toEqual(["id", "field_01"]);
+    const route = routeRelations(tall, scoped.relations).find(({ relation }) => relation.id === "events-user");
+    expect(route).toBeDefined();
+  });
+
+  it("keeps keys and the change of a modified table, and samples the unchanged rest", () => {
+    const sessions = placed("sessions");
+    expect(names("sessions")).toEqual([
+      "id",
+      ...Array.from({ length: 8 }, (_, i) => `field_0${i + 1}`),
+      "user_id",
+      "device_hash",
+      "locale",
+    ]);
+    expect(sessions.fold).toMatchObject({ hidden: 19, unchangedOnly: true });
+    expect(sessions.box.height).toBe(
+      CARD_HEIGHT_WITH_SUBTITLE + TABLE_ROWS_PADDING_Y * 2 + 12 * TABLE_ROW_HEIGHT + TABLE_FOLD_HEIGHT,
+    );
+  });
+
+  it("leaves a short table whole", () => {
+    expect(placed("users").fold).toBeUndefined();
+    expect(names("users")).toEqual(["id", "email"]);
+  });
+
+  it("does not fold to hide only a couple of rows", () => {
+    const twentySix = foldColumns(
+      { ...tallTablesGraph.dataModel!.tables[2]!, columns: tallTablesGraph.dataModel!.tables[2]!.columns.slice(0, 26) },
+      [],
+    );
+    expect(twentySix.hidden).toBe(0);
+    expect(twentySix.shown).toHaveLength(26);
+  });
+
+  it("says in the picture what it left out, and keeps the true count", () => {
+    const { svg } = render(tallTablesGraph, { lens: "data-model", theme: "dark" });
+    expect(svg).toContain("+ 40 more columns");
+    expect(svg).toContain("+ 19 unchanged columns");
+    expect(svg).toContain("64 columns");
+    expect(svg).not.toContain("field_63");
   });
 });

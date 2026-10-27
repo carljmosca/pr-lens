@@ -76,6 +76,16 @@ export const TABLE_ROW_HEIGHT = 20;
 export const TABLE_ROWS_PADDING_Y = 6;
 export const TABLE_ROW_TEXT_SIZE = 11;
 export const TABLE_ROW_TYPE_SIZE = 9.5;
+/**
+ * A tall table folds: keys, changed columns and relation ends always draw,
+ * unchanged ones up to a few, the whole card up to a ceiling, and one closing
+ * row says how many were left out. A fold that would hide only a couple of
+ * rows is not worth its own row.
+ */
+export const TABLE_ROWS_MAX = 24;
+export const TABLE_UNCHANGED_ROWS_MAX = 8;
+export const TABLE_FOLD_MIN_HIDDEN = 4;
+export const TABLE_FOLD_HEIGHT = 22;
 export const KEY_CHIP_WIDTH = 24;
 export const KEY_CHIP_HEIGHT = 14;
 export const KEY_CHIP_GAP = 8;

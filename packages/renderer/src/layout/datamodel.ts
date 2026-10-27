@@ -14,8 +14,12 @@ import {
   PILL_CARD_CLEARANCE,
   PORT_FAN_MAX,
   ROW_GAP,
+  TABLE_FOLD_HEIGHT,
+  TABLE_FOLD_MIN_HIDDEN,
   TABLE_ROW_HEIGHT,
+  TABLE_ROWS_MAX,
   TABLE_ROWS_PADDING_Y,
+  TABLE_UNCHANGED_ROWS_MAX,
   TITLE_SIZE,
   TITLE_SIZE_SMALL,
   TRACK_CLEARANCE,
@@ -29,11 +33,16 @@ import { pillSize } from "./labels.js";
 
 export type PlacedColumn = { column: TableColumn; top: number; centre: number };
 
+/** The closing row of a folded card: how many columns it does not draw. */
+export type PlacedFold = { hidden: number; unchangedOnly: boolean; top: number; centre: number };
+
 export type PlacedTable = {
   table: Table;
   box: Box;
   titleSize: number;
+  /** The rows the card draws; a folded card leaves some out. */
   columns: PlacedColumn[];
+  fold: PlacedFold | undefined;
   laneIndex: number;
 };
 
@@ -50,8 +59,47 @@ export type DataModelLayout = {
   laneTop: number;
 };
 
-export const tableHeight = (table: Table): number =>
-  CARD_HEIGHT_WITH_SUBTITLE + TABLE_ROWS_PADDING_Y * 2 + table.columns.length * TABLE_ROW_HEIGHT;
+export type ColumnFold = { shown: TableColumn[]; hidden: number; unchangedOnly: boolean };
+
+/**
+ * Which columns a card draws. A key, a changed column, and the end of a key
+ * in scope are the reason the table is in the picture, so they stay; the
+ * unchanged rest is sampled up to a few; and the card never passes the
+ * ceiling. What is left out is counted, never silently dropped: the fold row
+ * says so, and the subtitle keeps the true count.
+ */
+export const foldColumns = (table: Table, relations: readonly Relation[]): ColumnFold => {
+  const ends = new Set(
+    relations.flatMap(({ from, to }) => [from, to]).filter((end) => end.table === table.id).map((end) => end.column),
+  );
+  const tier = (column: TableColumn): 0 | 1 | 2 =>
+    column.key !== undefined || ends.has(column.name) ? 0 : column.delta !== "unchanged" ? 1 : 2;
+
+  const keep = new Set<TableColumn>();
+  let unchanged = 0;
+  for (const wanted of [0, 1, 2] as const)
+    for (const column of table.columns) {
+      if (keep.size >= TABLE_ROWS_MAX) break;
+      if (tier(column) !== wanted) continue;
+      if (wanted === 2 && unchanged >= TABLE_UNCHANGED_ROWS_MAX) break;
+      if (wanted === 2) unchanged += 1;
+      keep.add(column);
+    }
+
+  const hidden = table.columns.length - keep.size;
+  if (hidden < TABLE_FOLD_MIN_HIDDEN) return { shown: [...table.columns], hidden: 0, unchangedOnly: true };
+  return {
+    shown: table.columns.filter((column) => keep.has(column)),
+    hidden,
+    unchangedOnly: table.columns.every((column) => keep.has(column) || column.delta === "unchanged"),
+  };
+};
+
+export const tableHeight = (fold: ColumnFold): number =>
+  CARD_HEIGHT_WITH_SUBTITLE +
+  TABLE_ROWS_PADDING_Y * 2 +
+  fold.shown.length * TABLE_ROW_HEIGHT +
+  (fold.hidden > 0 ? TABLE_FOLD_HEIGHT : 0);
 
 /**
  * Lane order. A document that sets `order` on any store is honoured exactly:
@@ -182,17 +230,23 @@ export const layoutDataModel = (graph: ScopedGraph): DataModelLayout => {
     let y = contentTop;
     for (const table of graph.tables) {
       if (table.store !== store.id) continue;
-      const box = { x, y, width: LANE_CONTENT_WIDTH, height: tableHeight(table) };
+      const fold = foldColumns(table, graph.relations);
+      const box = { x, y, width: LANE_CONTENT_WIDTH, height: tableHeight(fold) };
       const rowsTop = y + CARD_HEIGHT_WITH_SUBTITLE + TABLE_ROWS_PADDING_Y;
+      const foldTop = rowsTop + fold.shown.length * TABLE_ROW_HEIGHT;
       tables.push({
         table,
         box,
         titleSize: LANE_CONTENT_WIDTH >= ICON_MIN_CARD_WIDTH ? TITLE_SIZE : TITLE_SIZE_SMALL,
-        columns: table.columns.map((column, index) => ({
+        columns: fold.shown.map((column, index) => ({
           column,
           top: rowsTop + index * TABLE_ROW_HEIGHT,
           centre: rowsTop + index * TABLE_ROW_HEIGHT + TABLE_ROW_HEIGHT / 2,
         })),
+        fold:
+          fold.hidden === 0
+            ? undefined
+            : { hidden: fold.hidden, unchangedOnly: fold.unchangedOnly, top: foldTop, centre: foldTop + TABLE_FOLD_HEIGHT / 2 },
         laneIndex,
       });
       y += box.height + ROW_GAP;

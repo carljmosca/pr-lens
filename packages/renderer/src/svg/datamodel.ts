@@ -145,6 +145,34 @@ const paintColumns = (placed: PlacedTable, palette: Palette): string => {
   );
 };
 
+/** The closing row of a folded card: a dashed rule, then how many columns stayed out of the picture. */
+const paintFold = (placed: PlacedTable, palette: Palette): string => {
+  const { fold, box } = placed;
+  if (fold === undefined) return "";
+  const styles = stylesFor(palette);
+  const label = `+ ${fold.hidden} ${fold.unchangedOnly ? "unchanged columns" : "more columns"}`;
+  return lines([
+    tag("path", {
+      class: "rule",
+      d: `M${coord(box.x + CARD_PADDING_X)},${coord(fold.top)} h${coord(box.width - CARD_PADDING_X * 2)}`,
+      stroke: palette.cardBorder,
+      "stroke-width": 1,
+      "stroke-dasharray": "3 3",
+    }),
+    textNode(
+      {
+        class: "fold",
+        x: coord(box.x + CARD_PADDING_X + KEY_CHIP_WIDTH + KEY_CHIP_GAP),
+        y: coord(fold.centre + 4),
+        "font-size": TABLE_ROW_TEXT_SIZE,
+        "font-family": styles.subtitle["font-family"],
+        fill: palette.muted,
+      },
+      label,
+    ),
+  ]);
+};
+
 const paintTable = (placed: PlacedTable, palette: Palette): string => {
   const styles = stylesFor(palette);
   const { table, box, titleSize } = placed;
@@ -200,6 +228,7 @@ const paintTable = (placed: PlacedTable, palette: Palette): string => {
         "stroke-width": 1,
       }),
       paintColumns(placed, palette),
+      paintFold(placed, palette),
       paintBadgeStrip(badgeStrip(box, badgesFor(table.badges, table.delta)), table.delta, palette),
     ]),
   );
