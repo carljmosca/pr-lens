@@ -45,7 +45,10 @@ const references = (pattern: RegExp): string[] =>
 
 test("every step a composite action runs declares the shell it runs in", () => {
   for (const step of action.runs.steps) {
-    if (step.uses !== undefined) continue;
+    if (step.uses !== undefined) {
+      expect(step.uses, `${step.uses} must be pinned to a full commit SHA`).toMatch(/@[0-9a-f]{40}$/);
+      continue;
+    }
     expect(step.run, `${step.name ?? "a step"} has neither uses nor run`).toBeDefined();
     expect(step.shell, `${step.name ?? "a step"} runs without a shell`).toBe("bash");
   }

@@ -162,6 +162,7 @@ test("the release job the catalog requires is version-controlled beside the comp
   expect(ci).toContain("release:");
   expect(ci).toContain("tag_name: $CI_COMMIT_TAG");
   expect(ci).toContain('if: $CI_COMMIT_TAG');
+  expect(ci).not.toContain(":latest");
 });
 
 test("the changelog documents the version that is about to ship", async () => {
