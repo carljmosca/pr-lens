@@ -27,6 +27,7 @@ export {
   SchemaVersionField,
   Sha,
   Summary,
+  TypeName,
 } from "./primitives.js";
 
 export {

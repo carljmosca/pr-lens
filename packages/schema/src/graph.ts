@@ -20,6 +20,7 @@ import {
   SchemaVersionField,
   Sha,
   Summary,
+  TypeName,
 } from "./primitives.js";
 
 /**
@@ -253,12 +254,12 @@ export type ColumnKey = z.infer<typeof ColumnKey>;
 export const TableColumn = z
   .strictObject({
     name: Label.describe("Column name, unique within its table. Relations name it."),
-    type: Label.describe("The type as the schema spells it, e.g. uuid, timestamptz, text[]."),
+    type: TypeName,
     key: ColumnKey.optional().describe(
       "primary for the table's own key, foreign for a column that holds another table's key, index for an index row.",
     ),
     delta: Delta,
-    previousType: Label.optional().describe("The type before this change, when the change altered it."),
+    previousType: TypeName.optional().describe("The type before this change, when the change altered it."),
   })
   .describe("One column of a table.");
 export type TableColumn = z.infer<typeof TableColumn>;

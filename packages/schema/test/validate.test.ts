@@ -627,6 +627,26 @@ describe("the data model", () => {
     expect(expectRejected(cited).message).toContain("cites column 'nope' of table 'subscription'");
   });
 
+  it.each(["uuid", "text[]", "numeric(5,4)", "timestamp with time zone", "Map<String, Int>", "string?"])(
+    "accepts %s as a type name",
+    (type) => {
+      const { doc, model: dataModel } = model();
+      dataModel.tables[0]!.columns[1]!.type = type;
+      expect(safeParseGraphDoc(doc).ok).toBe(true);
+    },
+  );
+
+  it.each(["text default 'sk_live_abc'", "text = 'x'", "postgres://user:pw@host/db", "text -- see config", "int; drop table users"])(
+    "refuses %s as a type, since a value has no place in a type name",
+    (type) => {
+      const { doc, model: dataModel } = model();
+      dataModel.tables[0]!.columns[1]!.type = type;
+      const error = expectRejected(doc);
+      expect(error.issues[0]?.path).toBe("dataModel.tables[0].columns[1].type");
+      expect(error.message).toContain("must be a type name");
+    },
+  );
+
   it("is never part of a stored map", () => {
     const parsed = safeParseGraphDoc(billingOrgGraphInput);
     if (!parsed.ok) throw parsed.error;

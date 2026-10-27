@@ -1049,8 +1049,9 @@
                     "type": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 120,
-                      "description": "The type as the schema spells it, e.g. uuid, timestamptz, text[]."
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|]*$",
+                      "description": "A type as the schema spells it, e.g. uuid, text[], numeric(5,4). Never a default or a value."
                     },
                     "key": {
                       "description": "primary for the table's own key, foreign for a column that holds another table's key, index for an index row.",
@@ -1075,7 +1076,8 @@
                       "description": "The type before this change, when the change altered it.",
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 120
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_ .,?!<>()[\\]|]*$"
                     }
                   },
                   "required": [
